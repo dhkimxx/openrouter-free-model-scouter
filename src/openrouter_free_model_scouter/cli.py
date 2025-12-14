@@ -75,7 +75,10 @@ def main() -> None:
         run_datetime = datetime.now()
 
         catalog_service = ModelCatalogService(openrouter_client=openrouter_client)
-        models = catalog_service.get_free_models(timeout_seconds=config.timeout_seconds)
+        models = catalog_service.get_free_models(
+            timeout_seconds=config.timeout_seconds,
+            model_id_contains=config.model_id_contains,
+        )
         if config.max_models is not None:
             models = models[: config.max_models]
 
@@ -120,19 +123,16 @@ def _read_env() -> Dict[str, str]:
 
 def _build_cli_overrides(args: argparse.Namespace) -> Dict[str, Any]:
     return {
-        "api_key": args.api_key,
-        "base_url": args.base_url,
-        "http_referer": args.http_referer,
-        "x_title": args.x_title,
-        "timeout_seconds": args.timeout,
-        "max_retries": args.retries,
+        "timeout_seconds": args.timeout_seconds,
+        "max_retries": args.max_retries,
         "concurrency": args.concurrency,
         "max_models": args.max_models,
-        "request_delay_seconds": args.request_delay,
+        "model_id_contains": args.model_id_contains,
+        "request_delay_seconds": args.request_delay_seconds,
         "repeat_count": args.repeat_count,
         "repeat_interval_minutes": args.repeat_interval_minutes,
         "prompt": args.prompt,
-        "output_xlsx_path": args.out,
+        "output_xlsx_path": args.output_xlsx_path,
         "fail_if_none_ok": args.fail_if_none_ok,
     }
 
@@ -152,23 +152,32 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     scan.add_argument(
-        "--api-key", default=None, help="OpenRouter API Key(기본: OPENROUTER_API_KEY)"
-    )
-    scan.add_argument(
-        "--base-url",
+        "--timeout-seconds",
+        dest="timeout_seconds",
+        type=int,
         default=None,
-        help="OpenRouter Base URL(기본: https://openrouter.ai/api/v1)",
+        help="요청 타임아웃(초)",
     )
-
-    scan.add_argument("--http-referer", default=None, help="HTTP-Referer 헤더 값(선택)")
-    scan.add_argument("--x-title", default=None, help="X-Title 헤더 값(선택)")
-
-    scan.add_argument("--timeout", type=int, default=None, help="요청 타임아웃(초)")
     scan.add_argument(
-        "--retries",
+        "--timeout",
+        dest="timeout_seconds",
+        type=int,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    scan.add_argument(
+        "--max-retries",
+        dest="max_retries",
         type=int,
         default=None,
         help="재시도 횟수(429/5xx/네트워크에 대해 적용)",
+    )
+    scan.add_argument(
+        "--retries",
+        dest="max_retries",
+        type=int,
+        default=None,
+        help=argparse.SUPPRESS,
     )
 
     scan.add_argument("--concurrency", type=int, default=None, help="동시 실행 수")
@@ -176,10 +185,24 @@ def _build_parser() -> argparse.ArgumentParser:
         "--max-models", type=int, default=None, help="상위 N개 모델만 체크"
     )
     scan.add_argument(
-        "--request-delay",
+        "--model-id-contains",
+        nargs="+",
+        default=None,
+        help="모델 ID에 특정 문자열이 포함된 모델만 체크(예: --model-id-contains mistral google)",
+    )
+    scan.add_argument(
+        "--request-delay-seconds",
+        dest="request_delay_seconds",
         type=float,
         default=None,
         help="요청 지연(초). index * delay 만큼 각 모델 체크 시작을 지연",
+    )
+    scan.add_argument(
+        "--request-delay",
+        dest="request_delay_seconds",
+        type=float,
+        default=None,
+        help=argparse.SUPPRESS,
     )
 
     scan.add_argument(
@@ -195,9 +218,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="반복 주기(분). 두 번째 실행부터 적용(기본: 0)",
     )
 
-    scan.add_argument("--prompt", default=None, help="헬스체크용 테스트 프롬프트")
     scan.add_argument(
-        "--out", default=None, help="Excel(xlsx) 출력 경로(기본: results/history.xlsx)"
+        "--healthcheck-prompt",
+        dest="prompt",
+        default=None,
+        help="헬스체크용 테스트 프롬프트",
+    )
+    scan.add_argument(
+        "--prompt",
+        dest="prompt",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    scan.add_argument(
+        "--output-xlsx-path",
+        dest="output_xlsx_path",
+        default=None,
+        help="Excel(xlsx) 출력 경로(기본: results/history.xlsx)",
+    )
+    scan.add_argument(
+        "--out",
+        dest="output_xlsx_path",
+        default=None,
+        help=argparse.SUPPRESS,
     )
 
     scan.add_argument(

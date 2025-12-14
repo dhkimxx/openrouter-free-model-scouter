@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Mapping
+from typing import Any, List, Mapping, Optional
 
 from .domain_models import ModelInfo
 from .openrouter_client import OpenRouterClient
@@ -10,7 +10,12 @@ class ModelCatalogService:
     def __init__(self, openrouter_client: OpenRouterClient) -> None:
         self._openrouter_client = openrouter_client
 
-    def get_free_models(self, timeout_seconds: int) -> List[ModelInfo]:
+    def get_free_models(
+        self,
+        timeout_seconds: int,
+        *,
+        model_id_contains: Optional[List[str]] = None,
+    ) -> List[ModelInfo]:
         response, failure_message = self._openrouter_client.list_models(
             timeout_seconds=timeout_seconds
         )
@@ -31,6 +36,12 @@ class ModelCatalogService:
                 "OpenRouter 모델 목록 조회 실패: data 필드가 리스트가 아님"
             )
 
+        normalized_contains: List[str] = []
+        if model_id_contains:
+            normalized_contains = [
+                item.strip().lower() for item in model_id_contains if item.strip()
+            ]
+
         result: List[ModelInfo] = []
         for item in data:
             if not isinstance(item, dict):
@@ -42,6 +53,11 @@ class ModelCatalogService:
 
             if not model_id.endswith(":free"):
                 continue
+
+            if normalized_contains:
+                lowered_model_id = model_id.lower()
+                if not any(token in lowered_model_id for token in normalized_contains):
+                    continue
 
             name = item.get("name")
             if not isinstance(name, str):

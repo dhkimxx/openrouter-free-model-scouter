@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 
 def _parse_scalar(value: str) -> Any:
@@ -64,6 +64,25 @@ def load_simple_dotenv_mapping(env_file_path: Path) -> Dict[str, str]:
     return mapping
 
 
+def _parse_csv_string_list(value: Any) -> List[str]:
+    if value is None:
+        return []
+    normalized: List[str] = []
+    if isinstance(value, list):
+        for item in value:
+            for part in str(item).split(","):
+                stripped_item = part.strip()
+                if stripped_item:
+                    normalized.append(stripped_item)
+        return normalized
+
+    for part in str(value).split(","):
+        stripped_item = part.strip()
+        if stripped_item:
+            normalized.append(stripped_item)
+    return normalized
+
+
 @dataclass(frozen=True)
 class AppConfig:
     api_key: str
@@ -74,6 +93,7 @@ class AppConfig:
     max_retries: int
     concurrency: int
     max_models: Optional[int]
+    model_id_contains: List[str]
     request_delay_seconds: float
     repeat_count: int
     repeat_interval_minutes: float
@@ -112,15 +132,23 @@ class AppConfig:
             resolve("timeout_seconds", "OPENROUTER_SCOUT_TIMEOUT_SECONDS", 20)
         )
         max_retries = int(resolve("max_retries", "OPENROUTER_SCOUT_MAX_RETRIES", 2))
-        concurrency = int(resolve("concurrency", "OPENROUTER_SCOUT_CONCURRENCY", 3))
+        concurrency = int(resolve("concurrency", "OPENROUTER_SCOUT_CONCURRENCY", 2))
 
         max_models = resolve("max_models", "OPENROUTER_SCOUT_MAX_MODELS", None)
         if max_models is not None:
             max_models = int(max_models)
 
+        model_id_contains = _parse_csv_string_list(
+            resolve(
+                "model_id_contains",
+                "OPENROUTER_SCOUT_MODEL_ID_CONTAINS",
+                None,
+            )
+        )
+
         request_delay_seconds = float(
             resolve(
-                "request_delay_seconds", "OPENROUTER_SCOUT_REQUEST_DELAY_SECONDS", 0.0
+                "request_delay_seconds", "OPENROUTER_SCOUT_REQUEST_DELAY_SECONDS", 0.3
             )
         )
 
@@ -159,6 +187,7 @@ class AppConfig:
             max_retries=max_retries,
             concurrency=concurrency,
             max_models=max_models,
+            model_id_contains=model_id_contains,
             request_delay_seconds=request_delay_seconds,
             repeat_count=repeat_count,
             repeat_interval_minutes=repeat_interval_minutes,
