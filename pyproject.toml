@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openrouter-free-model-scouter"
+version = "0.1.0"
+description = "Scout OpenRouter free models and record healthcheck results to Excel"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "openpyxl>=3.1.2",
+]
+
+[project.scripts]
+openrouter-free-model-scouter = "openrouter_free_model_scouter.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
