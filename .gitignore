@@ -19,8 +19,8 @@ htmlcov/
 !.env.example
 config.yaml
 
-# # Outputs
-# results/
+# Outputs
+results/availability-report.md
 
 # OS files
 .DS_Store
@@ -28,3 +28,5 @@ config.yaml
 # IDE
 .vscode/
 .idea/
+
+~$*.xlsx
