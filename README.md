@@ -96,6 +96,20 @@ Unix 편의 스크립트(`bash`/`zsh`):
 skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh
 ```
 
+스크립트 환경변수 오버라이드:
+
+- `SCOUT_XLSX_PATH` (기본: `results/history.xlsx`)
+- `SCOUT_REPORT_PATH` (기본: `results/availability-report.md`)
+- `SCOUT_LOOKBACK_RUNS` (기본: `24`)
+- `SCOUT_PRINT_SUMMARY` (기본: `1`, `0`이면 요약 출력 비활성화)
+
+## 에이전트 호출량 버스트 방지
+
+- 기본 실행은 `run_scan_and_report.sh` 1회(포그라운드)로 처리하고, 백그라운드 실행 + 짧은 주기 폴링은 피하세요.
+- 상태 확인이 꼭 필요하면 60초 미만 간격 폴링은 금지하고, 최대 5회 이내로 제한하세요.
+- 에러 복구 시에는 설치/동기화/재실행을 가능한 한 한 번의 명령으로 묶어 turn 수를 줄이세요.
+- 리포트 원문 전체 대신 스크립트 요약 출력부터 확인해 컨텍스트 토큰 사용량을 줄이세요.
+
 ## AI 에이전트 통합
 
 여러 AI 코딩 도구에서 자동화 워크플로우로 사용할 수 있습니다.

@@ -1,6 +1,6 @@
 # OpenRouter Free Model Scouter Agent Guide
 
-> **TL;DR**: `uv sync && cp .env.example .env` 후 API 키를 설정하고, `uv run openrouter-free-model-scouter scan ...` 다음 `uv run openrouter-free-model-report ...`를 실행하면 됩니다.
+> **TL;DR**: `uv sync && cp .env.example .env` 후 API 키를 설정하고, `skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh` 한 번만 실행하세요.
 
 This repository supports a recurring workflow:
 
@@ -25,37 +25,65 @@ Preflight rules for cloned environments:
 - If the key is missing, stop immediately and request user input instead of running partial commands.
 - Never print, log, or commit the raw API key value.
 
-### 2) Run scan + report
+### 2) Burst-control rules (required for agents)
 
-Cross-platform default (recommended):
+- Prefer one foreground execution for the full workflow; do not run background jobs plus tight polling.
+- Preferred status strategy: a single blocking command with sufficiently long timeout (recommend >= 20 minutes for large scans).
+- If polling is unavoidable:
+  - minimum interval: 60 seconds
+  - maximum checks: 5
+- During recovery, bundle related fixes into one command when safe (example: install + sync + rerun), instead of many small retries.
+- Avoid loading full outputs into context by default. Use concise summary output first.
 
-```bash
-uv run openrouter-free-model-scouter scan \
-  --output-xlsx-path results/history.xlsx \
-  --concurrency 1 \
-  --max-retries 3 \
-  --request-delay-seconds 1.0 \
-  --timeout-seconds 25
+### 3) Run scan + report
 
-uv run openrouter-free-model-report \
-  --xlsx-path results/history.xlsx \
-  --output-path results/availability-report.md \
-  --lookback-runs 24
-```
-
-Unix convenience script (`bash`/`zsh`):
+One-turn default (recommended):
 
 ```bash
 skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh
 ```
 
-Script-only environment overrides:
+The script performs preflight checks, runs scan/report, and prints a compact summary to reduce follow-up read calls.
+
+If script execution is unavailable, use one chained foreground command:
+
+```bash
+uv run openrouter-free-model-scouter scan \
+  --output-xlsx-path results/history.xlsx \
+  --concurrency 1 \
+  --max-retries 3 \
+  --request-delay-seconds 1.0 \
+  --timeout-seconds 25 \
+&& uv run openrouter-free-model-report \
+  --xlsx-path results/history.xlsx \
+  --output-path results/availability-report.md \
+  --lookback-runs 24
+```
+
+Two-step equivalent (same parameters):
+
+```bash
+uv run openrouter-free-model-scouter scan \
+  --output-xlsx-path results/history.xlsx \
+  --concurrency 1 \
+  --max-retries 3 \
+  --request-delay-seconds 1.0 \
+  --timeout-seconds 25
+
+uv run openrouter-free-model-report \
+  --xlsx-path results/history.xlsx \
+  --output-path results/availability-report.md \
+  --lookback-runs 24
+```
+
+Unix script environment overrides:
 
 - `SCOUT_XLSX_PATH` (default: `results/history.xlsx`)
 - `SCOUT_REPORT_PATH` (default: `results/availability-report.md`)
 - `SCOUT_LOOKBACK_RUNS` (default: `24`)
+- `SCOUT_PRINT_SUMMARY` (default: `1`, set `0` to disable)
 
-### 3) Run scan only
+### 4) Run scan only
 
 ```bash
 uv run openrouter-free-model-scouter scan \
@@ -66,7 +94,7 @@ uv run openrouter-free-model-scouter scan \
   --timeout-seconds 25
 ```
 
-### 4) Generate report only
+### 5) Generate report only
 
 ```bash
 uv run openrouter-free-model-report \
@@ -75,7 +103,7 @@ uv run openrouter-free-model-report \
   --lookback-runs 24
 ```
 
-### 5) Fallback without `uv`
+### 6) Fallback without `uv`
 
 ```bash
 python -m pip install -e .

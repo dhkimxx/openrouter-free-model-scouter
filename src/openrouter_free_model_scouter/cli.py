@@ -33,7 +33,7 @@ def main() -> None:
     cli_overrides = _build_cli_overrides(args)
     config = AppConfig.from_sources(
         cli_overrides=cli_overrides,
-        env={**dotenv_mapping, **dict(**_read_env())},
+        env=_merge_env_with_dotenv(dotenv_mapping, _read_env()),
     )
 
     if config.repeat_count < 1:
@@ -119,6 +119,19 @@ def _read_env() -> Dict[str, str]:
     import os
 
     return dict(os.environ)
+
+
+def _merge_env_with_dotenv(
+    dotenv_mapping: Dict[str, str], runtime_env: Dict[str, str]
+) -> Dict[str, str]:
+    merged: Dict[str, str] = dict(dotenv_mapping)
+    for key, value in runtime_env.items():
+        # Empty process env values should not shadow non-empty .env values.
+        if value != "":
+            merged[key] = value
+        elif key not in merged:
+            merged[key] = value
+    return merged
 
 
 def _build_cli_overrides(args: argparse.Namespace) -> Dict[str, Any]:
