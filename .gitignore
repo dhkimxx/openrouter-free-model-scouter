@@ -21,6 +21,8 @@ config.yaml
 
 # Outputs
 results/availability-report.md
+results/summary.md
+results/logs/
 
 # OS files
 .DS_Store

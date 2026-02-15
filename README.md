@@ -110,6 +110,28 @@ skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh
 - 에러 복구 시에는 설치/동기화/재실행을 가능한 한 한 번의 명령으로 묶어 turn 수를 줄이세요.
 - 리포트 원문 전체 대신 스크립트 요약 출력부터 확인해 컨텍스트 토큰 사용량을 줄이세요.
 
+## 크론 운영 (주기 결정은 크론에서)
+
+작업 주기는 코드에 고정하지 말고, OS 크론에서 그때 결정하세요.
+고빈도 작업은 AI 에이전트를 거치지 말고 스크립트를 직접 실행하도록 분리합니다.
+
+```cron
+# scan + report (무에이전트): <SCAN_SCHEDULE>를 원하는 주기로 설정
+<SCAN_SCHEDULE> cd /ABS/PATH/openrouter-free-model-scouter && skills/openrouter-free-model-watchdog/scripts/run_scan_report_no_agent.sh
+
+# summary 생성 (기본: 무AI): <SUMMARY_SCHEDULE>를 원하는 주기로 설정
+<SUMMARY_SCHEDULE> cd /ABS/PATH/openrouter-free-model-scouter && skills/openrouter-free-model-watchdog/scripts/generate_summary_no_agent.sh
+```
+
+관련 스크립트:
+
+- `skills/openrouter-free-model-watchdog/scripts/run_scan_report_no_agent.sh`
+  - 중복 실행 방지 lock + 로그 파일(`results/logs/scan-report-no-agent.log`)
+- `skills/openrouter-free-model-watchdog/scripts/generate_summary_no_agent.sh`
+  - 최신 리포트 재생성 후 `results/summary.md` 출력
+
+서술형 AI 요약이 필요하면, 위에서 생성한 `results/summary.md`를 입력으로 summary 주기당 1회만 에이전트를 호출하세요.
+
 ## AI 에이전트 통합
 
 여러 AI 코딩 도구에서 자동화 워크플로우로 사용할 수 있습니다.

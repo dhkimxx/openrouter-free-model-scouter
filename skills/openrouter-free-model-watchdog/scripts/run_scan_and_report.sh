@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/scout_common.sh
+source "$SCRIPT_DIR/lib/scout_common.sh"
+
+ROOT_DIR="$(scout_repo_root "${BASH_SOURCE[0]}")"
 cd "$ROOT_DIR"
 
 XLSX_PATH="${SCOUT_XLSX_PATH:-results/history.xlsx}"
@@ -22,10 +26,7 @@ else
   SCAN_ARGS=("${DEFAULT_SCAN_ARGS[@]}")
 fi
 
-if ! command -v uv >/dev/null 2>&1; then
-  echo "[ERROR] 'uv' not found. Install uv and run: uv sync" >&2
-  exit 1
-fi
+scout_require_uv
 
 has_api_key_in_dotenv() {
   if [[ ! -f ".env" ]]; then
@@ -52,38 +53,20 @@ if [[ -z "${OPENROUTER_API_KEY:-}" ]] && ! has_api_key_in_dotenv; then
   exit 1
 fi
 
-run_scan() {
-  uv run openrouter-free-model-scouter scan "$@"
-}
-
-run_report() {
-  uv run openrouter-free-model-report "$@"
-}
-
 echo "[1/2] Running OpenRouter free-model scan..."
-run_scan --output-xlsx-path "$XLSX_PATH" "${SCAN_ARGS[@]}"
+uv run openrouter-free-model-scouter scan \
+  --output-xlsx-path "$XLSX_PATH" \
+  "${SCAN_ARGS[@]}"
 
 echo "[2/2] Generating availability report..."
-run_report \
+uv run openrouter-free-model-report \
   --xlsx-path "$XLSX_PATH" \
   --output-path "$REPORT_PATH" \
   --lookback-runs "$LOOKBACK_RUNS"
 
 echo "[OK] Report path: $REPORT_PATH"
 
-print_summary() {
-  awk '
-  /^## Latest Run Snapshot/ {section="latest"; print ""; print $0; next}
-  /^## Delta vs Previous Run/ {section="delta"; print ""; print $0; next}
-  /^## Recommended Actions/ {section="actions"; print ""; print $0; next}
-  /^## / {section=""; next}
-  section=="latest" && /^- / {print}
-  section=="delta" && /^- / {print}
-  section=="actions" && /^[0-9]+\./ {print}
-  ' "$REPORT_PATH"
-}
-
 if [[ "$PRINT_SUMMARY" != "0" ]]; then
   echo "[3/3] Summary (set SCOUT_PRINT_SUMMARY=0 to disable):"
-  print_summary
+  scout_print_report_snapshot "$REPORT_PATH"
 fi

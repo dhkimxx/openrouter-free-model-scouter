@@ -35,7 +35,14 @@ Preflight rules for cloned environments:
 - During recovery, bundle related fixes into one command when safe (example: install + sync + rerun), instead of many small retries.
 - Avoid loading full outputs into context by default. Use concise summary output first.
 
-### 3) Run scan + report
+### 3) Recurring schedule split (important)
+
+- Recurring task schedules should be decided in cron entries, not fixed in script names or code.
+- Use `skills/openrouter-free-model-watchdog/scripts/run_scan_report_no_agent.sh` for scan/report ingestion without agent runtime calls.
+- Use `skills/openrouter-free-model-watchdog/scripts/generate_summary_no_agent.sh` for deterministic summary generation (no-AI default).
+- If an LLM narrative is required, run agent summary once per summary run using `results/summary.md` as compact input.
+
+### 4) Run scan + report
 
 One-turn default (recommended):
 
@@ -83,7 +90,7 @@ Unix script environment overrides:
 - `SCOUT_LOOKBACK_RUNS` (default: `24`)
 - `SCOUT_PRINT_SUMMARY` (default: `1`, set `0` to disable)
 
-### 4) Run scan only
+### 5) Run scan only
 
 ```bash
 uv run openrouter-free-model-scouter scan \
@@ -94,7 +101,7 @@ uv run openrouter-free-model-scouter scan \
   --timeout-seconds 25
 ```
 
-### 5) Generate report only
+### 6) Generate report only
 
 ```bash
 uv run openrouter-free-model-report \
@@ -103,7 +110,7 @@ uv run openrouter-free-model-report \
   --lookback-runs 24
 ```
 
-### 6) Fallback without `uv`
+### 7) Fallback without `uv`
 
 ```bash
 python -m pip install -e .

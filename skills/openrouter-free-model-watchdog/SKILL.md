@@ -38,6 +38,8 @@ Optional tuning inputs are supported through CLI flags and environment variables
 5. Use `skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh` with summary output enabled (default) to reduce follow-up read calls.
 6. Use blocking execution with a generous timeout (recommend >= 20 minutes for large scans) instead of background monitor loops.
 7. Before any retry cycle, run preflight checks first (`uv` present, API key set) to avoid repetitive failing turns.
+8. Recurring schedules must be decided in scheduler config (cron/systemd), not hard-coded in script names or skill logic.
+9. For high-frequency schedules, prefer OS scheduler + no-agent shell scripts to avoid LLM turn overhead.
 
 ## Default Workflow (cross-platform)
 
@@ -75,6 +77,18 @@ Script-only overrides:
 - `SCOUT_REPORT_PATH` (default: `results/availability-report.md`)
 - `SCOUT_LOOKBACK_RUNS` (default: `24`)
 - `SCOUT_PRINT_SUMMARY` (default: `1`, set `0` to disable)
+
+### Recurring no-agent scripts (schedule-agnostic)
+
+For frequent automation outside agent runtimes:
+
+```bash
+# Scan/report path (no-agent)
+skills/openrouter-free-model-watchdog/scripts/run_scan_report_no_agent.sh
+
+# Summary path (no-agent)
+skills/openrouter-free-model-watchdog/scripts/generate_summary_no_agent.sh
+```
 
 ### Fallback without `uv`
 
@@ -116,3 +130,4 @@ If history has fewer than 2 runs, explicitly state that trend confidence is limi
 
 - Metrics and definitions: `references/report_metrics.md`
 - Expected report shape: `references/example_report.md`
+- Cron and scheduler recipes: `references/cron_recipes.md`
