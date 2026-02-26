@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenRouter Free Model Scouter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8 flex justify-between items-center">
+            <h1 class="text-3xl font-bold">OpenRouter Free Model Scouter</h1>
+            <div id="last-updated" class="text-sm text-gray-500"></div>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase">Total Models</h3>
+                <p id="summary-total" class="text-3xl font-bold mt-2">-</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-green-500">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase">Healthy</h3>
+                <p id="summary-healthy" class="text-3xl font-bold mt-2 text-green-500">-</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-yellow-500">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase">Degraded</h3>
+                <p id="summary-degraded" class="text-3xl font-bold mt-2 text-yellow-500">-</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-red-500">
+                <h3 class="text-sm font-semibold text-gray-500 uppercase">Down</h3>
+                <p id="summary-down" class="text-3xl font-bold mt-2 text-red-500">-</p>
+            </div>
+        </div>
+
+        <!-- Models Table -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Model ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Uptime (24h)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Avg Latency</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cons. Failures</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="models-tbody" class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-11/12 md:w-3/4 lg:w-2/3 max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h3 id="modal-title" class="text-xl font-bold">Model History</h3>
+                <button id="modal-close" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div id="chart-container" style="width: 100%; height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

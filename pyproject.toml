@@ -13,14 +13,22 @@ dependencies = [
     "uvicorn[standard]>=0.29.0",
     "jinja2>=3.1.0",
     "python-multipart>=0.0.9",
+    "sqlalchemy>=2.0.47",
+    "httpx>=0.28.1",
 ]
 
 [project.scripts]
 openrouter-free-model-scouter = "openrouter_free_model_scouter.cli:main"
-openrouter-free-model-scouter-web = "openrouter_free_model_scouter.web.server:run_server"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[dependency-groups]
+dev = [
+    "playwright>=1.58.0",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]

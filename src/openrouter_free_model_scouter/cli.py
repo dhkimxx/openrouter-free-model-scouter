@@ -11,11 +11,10 @@ from .config import (
     AppConfig,
     load_simple_dotenv_mapping,
 )
-from .sqlite_repository import SqliteTimelineRepository
-from .healthcheck_service import HealthcheckService
+from .worker.scouter import ScouterWorker
 from .http_client import HttpClient
-from .model_catalog_service import ModelCatalogService
 from .openrouter_client import OpenRouterClient, OpenRouterClientConfig
+from .database import SessionLocal, engine, Base
 
 
 def main() -> None:
@@ -43,7 +42,7 @@ def _cmd_serve(args: argparse.Namespace) -> None:
     print(f"[WEB] OpenRouter Free Model Scouter 대시보드 시작 중...")
     print(f"[WEB] http://localhost:{port} 에서 접속하세요")
     uvicorn.run(
-        "openrouter_free_model_scouter.web.server:app",
+        "openrouter_free_model_scouter.main:app",
         host=host,
         port=port,
         reload=False,
@@ -87,50 +86,34 @@ def _cmd_scan(args: argparse.Namespace) -> None:
     total_ok = 0
     total_failed = 0
 
-    sqlite_repository = SqliteTimelineRepository()
+    # Ensure DB tables exist
+    Base.metadata.create_all(bind=engine)
 
-    for iteration_index in range(config.repeat_count):
-        if iteration_index > 0 and config.repeat_interval_minutes > 0:
-            time.sleep(config.repeat_interval_minutes * 60)
+    db = SessionLocal()
 
-        run_datetime = datetime.now()
+    try:
+        worker = ScouterWorker(db, openrouter_client)
 
-        catalog_service = ModelCatalogService(openrouter_client=openrouter_client)
-        models = catalog_service.get_free_models(
-            timeout_seconds=config.timeout_seconds,
-            model_id_contains=config.model_id_contains,
-        )
-        if config.max_models is not None:
-            models = models[: config.max_models]
+        for iteration_index in range(config.repeat_count):
+            if iteration_index > 0 and config.repeat_interval_minutes > 0:
+                time.sleep(config.repeat_interval_minutes * 60)
 
-        healthcheck_service = HealthcheckService(openrouter_client=openrouter_client)
-        results = healthcheck_service.check_models(
-            models,
-            prompt=config.prompt,
-            timeout_seconds=config.timeout_seconds,
-            max_retries=config.max_retries,
-            concurrency=config.concurrency,
-            request_delay_seconds=config.request_delay_seconds,
-        )
+            run_id, results = worker.run_scan(config)
 
-        sqlite_repository.append_run(
-            config.db_path,
-            run_datetime=run_datetime,
-            results=results,
-        )
+            ok_count = sum(1 for item in results if item.ok)
+            fail_count = len(results) - ok_count
+            total_ok += ok_count
+            total_failed += fail_count
 
-        ok_count = sum(1 for item in results if item.ok)
-        fail_count = len(results) - ok_count
-        total_ok += ok_count
-        total_failed += fail_count
-
-        current_iteration = iteration_index + 1
-        print(
-            f"[{current_iteration}/{config.repeat_count}] 총 {len(results)}개 모델 체크 완료"
-        )
-        print(f"[{current_iteration}/{config.repeat_count}] 성공: {ok_count}")
-        print(f"[{current_iteration}/{config.repeat_count}] 실패: {fail_count}")
-        print(f"DB 저장: {config.db_path}")
+            current_iteration = iteration_index + 1
+            print(
+                f"[{current_iteration}/{config.repeat_count}] 총 {len(results)}개 모델 체크 완료"
+            )
+            print(f"[{current_iteration}/{config.repeat_count}] 성공: {ok_count}")
+            print(f"[{current_iteration}/{config.repeat_count}] 실패: {fail_count}")
+            print(f"DB 저장: {config.db_path}")
+    finally:
+        db.close()
 
     if config.fail_if_none_ok and total_ok == 0:
         raise SystemExit(3)
