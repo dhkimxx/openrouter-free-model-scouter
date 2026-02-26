@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenRouter Free Model Scouter</title>
+  <meta name="description" content="Real-time health dashboard for OpenRouter free models. Track availability, latency, and rate-limit status across all free models." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-base: #0a0d14;
+      --bg-surface: #111520;
+      --bg-elevated: #18202e;
+      --bg-hover: #1e2840;
+      --border: rgba(255,255,255,0.07);
+      --border-bright: rgba(255,255,255,0.15);
+
+      --accent: #4f8ef7;
+      --accent-glow: rgba(79,142,247,0.25);
+      --accent-dim: rgba(79,142,247,0.15);
+
+      --ok: #22c55e;
+      --ok-bg: rgba(34,197,94,0.12);
+      --ok-dim: rgba(34,197,94,0.06);
+      --warn: #f59e0b;
+      --warn-bg: rgba(245,158,11,0.12);
+      --warn-dim: rgba(245,158,11,0.06);
+      --fail: #ef4444;
+      --fail-bg: rgba(239,68,68,0.12);
+      --fail-dim: rgba(239,68,68,0.06);
+      --miss: rgba(255,255,255,0.08);
+
+      --text-primary: #e8eaf2;
+      --text-secondary: #8892a4;
+      --text-muted: #4a5568;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+
+      --transition: 0.15s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,13,20,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+    }
+    .header-inner {
+      max-width: 1600px;
+      margin: 0 auto;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 17px;
+      letter-spacing: -0.3px;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #4f8ef7, #7c3aed);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .header-spacer { flex: 1; }
+    .header-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Scan Button ── */
+    #scan-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+      box-shadow: 0 0 24px var(--accent-glow);
+    }
+    #scan-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 32px var(--accent-glow); }
+    #scan-btn:active:not(:disabled) { transform: translateY(0); }
+    #scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    #scan-btn.scanning .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Layout ── */
+    .main {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* ── Stats Row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color var(--transition);
+    }
+    .stat-card:hover { border-color: var(--border-bright); }
+    .stat-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+    .stat-value { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; }
+    .stat-value.ok-color { color: var(--ok); }
+    .stat-value.warn-color { color: var(--warn); }
+    .stat-value.fail-color { color: var(--fail); }
+    .stat-value.neutral { color: var(--text-primary); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      font-size: 13px;
+      color: var(--text-primary);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: translateY(8px);
+      z-index: 999;
+      max-width: 320px;
+    }
+    #toast.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    #toast.error { border-color: var(--fail); }
+    #toast.success { border-color: var(--ok); }
+
+    /* ── Section Header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .run-count-badge {
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Timeline Table ── */
+    .table-wrapper {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .table-scroll {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th {
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 11px;
+      letter-spacing: 0.3px;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+    }
+    th.run-col {
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      min-width: 90px;
+      max-width: 120px;
+    }
+    th.model-col { min-width: 260px; position: sticky; left: 0; z-index: 2; background: var(--bg-elevated); }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg-hover); }
+    td.model-id-cell {
+      position: sticky;
+      left: 0;
+      background: var(--bg-surface);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      z-index: 1;
+      white-space: nowrap;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    tr:hover td.model-id-cell { background: var(--bg-hover); }
+
+    td.status-cell {
+      text-align: center;
+      padding: 6px 8px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+    .pill-ok { background: var(--ok-bg); color: var(--ok); }
+    .pill-warn { background: var(--warn-bg); color: var(--warn); }
+    .pill-fail { background: var(--fail-bg); color: var(--fail); }
+    .pill-miss { background: var(--miss); color: var(--text-muted); }
+
+    /* ok-rate bar sidebar */
+    td.rate-cell {
+      min-width: 100px;
+      padding: 8px 12px;
+    }
+    .rate-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rate-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .rate-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: var(--ok);
+      transition: width 0.5s ease;
+    }
+    .rate-label {
+      font-size: 10px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-secondary);
+      min-width: 34px;
+      text-align: right;
+    }
+
+    /* ── Empty / Loading states ── */
+    .empty-state {
+      padding: 80px 24px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .empty-state h3 { font-size: 16px; margin-bottom: 8px; color: var(--text-secondary); }
+    .empty-state p { font-size: 13px; }
+
+    /* ── Scan status bar ── */
+    #scan-status-bar {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    #scan-status-bar.visible { display: flex; }
+    .scanning-pulse {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* ── Search / Filter ── */
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    #filter-input {
+      flex: 1;
+      max-width: 360px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      padding: 8px 14px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    #filter-input::placeholder { color: var(--text-muted); }
+    #filter-input:focus { border-color: var(--accent); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .header-inner { height: 56px; }
+      .main { padding: 16px 12px 40px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a class="logo" href="/">
+      <span class="logo-icon">🔭</span>
+      OpenRouter Scouter
+    </a>
+    <div class="header-spacer"></div>
+    <span class="header-meta" id="last-updated">불러오는 중...</span>
+    <button id="scan-btn" onclick="triggerScan()">
+      <span class="spinner" id="scan-spinner"></span>
+      지금 스캔
+    </button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Scan progress bar -->
+  <div id="scan-status-bar">
+    <div class="scanning-pulse"></div>
+    <span id="scan-status-text">헬스체크 스캔 진행 중...</span>
+  </div>
+
+  <!-- Stats cards -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">총 모델</div>
+      <div class="stat-value neutral" id="stat-total">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">최근 OK</div>
+      <div class="stat-value ok-color" id="stat-ok">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">최근 429</div>
+      <div class="stat-value warn-color" id="stat-429">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">최근 실패</div>
+      <div class="stat-value fail-color" id="stat-fail">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">총 스캔</div>
+      <div class="stat-value neutral" id="stat-runs">—</div>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter-row">
+    <input id="filter-input" type="text" placeholder="모델 검색..." oninput="applyFilter()" />
+  </div>
+
+  <!-- Timeline table -->
+  <div class="section-header">
+    <span class="section-title">타임라인</span>
+    <span class="run-count-badge" id="run-count-badge">— runs</span>
+  </div>
+
+  <div class="table-wrapper">
+    <div class="table-scroll">
+      <table id="timeline-table">
+        <thead id="timeline-head"></thead>
+        <tbody id="timeline-body"></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="empty-state" style="display:none;">
+      <h3>데이터 없음</h3>
+      <p>아직 스캔 기록이 없습니다. "지금 스캔" 버튼을 눌러 첫 번째 스캔을 시작하세요.</p>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  // ── Constants ──────────────────────────────────────────────
+  const MAX_RUNS_VISIBLE = 24; // show last N run columns
+  let _allModels = [];
+  let _runLabels = [];
+  let _pollTimer = null;
+
+  // ── Utility ────────────────────────────────────────────────
+  function statusClass(raw) {
+    if (!raw) return 'miss';
+    const u = raw.toUpperCase();
+    if (u.startsWith('OK')) return 'ok';
+    if (u === '429' || u.startsWith('RATE')) return 'warn';
+    if (u === '') return 'miss';
+    return 'fail';
+  }
+  function pillClass(cls) {
+    return { ok: 'pill-ok', warn: 'pill-warn', fail: 'pill-fail', miss: 'pill-miss' }[cls];
+  }
+  function pillLabel(raw) {
+    if (!raw || raw === '') return '—';
+    const u = raw.toUpperCase();
+    if (u.startsWith('OK')) {
+      const match = raw.match(/\((\d+)ms\)/);
+      return match ? `✓ ${match[1]}ms` : '✓ OK';
+    }
+    if (u === '429') return '429';
+    if (u === '') return '—';
+    if (u.startsWith('HTTP')) return raw;
+    return raw.length > 12 ? raw.slice(0, 12) + '…' : raw;
+  }
+
+  function showToast(msg, type = 'info') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = ''; }, 3500);
+  }
+
+  // ── Fetch & Render ─────────────────────────────────────────
+  async function fetchStatus() {
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      if (data.error) { console.warn('API error:', data.error); return; }
+      render(data);
+      updateScanState(data.scan_state);
+    } catch (e) {
+      console.error('Failed to fetch status', e);
+    }
+  }
+
+  function render(data) {
+    _allModels = data.models || [];
+    _runLabels = data.run_labels || [];
+
+    // Stats
+    const runs = _runLabels.length;
+    document.getElementById('stat-runs').textContent = runs;
+    document.getElementById('run-count-badge').textContent = `${runs} runs`;
+
+    if (_allModels.length > 0 && runs > 0) {
+      const latest = _allModels.map(m => (m.statuses[m.statuses.length - 1] || ''));
+      const okC = latest.filter(s => s.toUpperCase().startsWith('OK')).length;
+      const warnC = latest.filter(s => s === '429').length;
+      const failC = latest.filter(s => s && !s.toUpperCase().startsWith('OK') && s !== '429' && s !== '').length;
+      document.getElementById('stat-total').textContent = _allModels.length;
+      document.getElementById('stat-ok').textContent = okC;
+      document.getElementById('stat-429').textContent = warnC;
+      document.getElementById('stat-fail').textContent = failC;
+    }
+
+    // Time of update
+    const now = new Date();
+    document.getElementById('last-updated').textContent =
+      `업데이트: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+
+    renderTable();
+  }
+
+  function renderTable() {
+    const filter = document.getElementById('filter-input').value.toLowerCase();
+    const models = filter
+      ? _allModels.filter(m => m.model_id.toLowerCase().includes(filter))
+      : _allModels;
+
+    const emptyEl = document.getElementById('empty-state');
+    const tableEl = document.getElementById('timeline-table');
+
+    if (models.length === 0 && _allModels.length === 0) {
+      emptyEl.style.display = 'block';
+      tableEl.style.display = 'none';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'table';
+
+    // Show only last MAX_RUNS_VISIBLE columns
+    const startIdx = Math.max(0, _runLabels.length - MAX_RUNS_VISIBLE);
+    const visibleLabels = _runLabels.slice(startIdx);
+
+    // Header
+    const thead = document.getElementById('timeline-head');
+    const headerCols = ['<th class="model-col">모델 ID</th>', '<th class="run-col">OK 율</th>'];
+    visibleLabels.forEach(lbl => {
+      const short = lbl.replace(/(\d{4}-\d{2}-\d{2}) /, '$1<br>');
+      headerCols.push(`<th class="run-col">${short}</th>`);
+    });
+    thead.innerHTML = `<tr>${headerCols.join('')}</tr>`;
+
+    // Body
+    const tbody = document.getElementById('timeline-body');
+    const rows = models.map(m => {
+      const sliced = m.statuses.slice(startIdx);
+      const rateColor = m.ok_rate >= 0.8 ? 'var(--ok)' : m.ok_rate >= 0.5 ? 'var(--warn)' : 'var(--fail)';
+
+      const ratePct = Math.round(m.ok_rate * 100);
+      const rateCellHtml = `
+        <td class="rate-cell">
+          <div class="rate-bar-wrap">
+            <div class="rate-bar"><div class="rate-fill" style="width:${ratePct}%;background:${rateColor}"></div></div>
+            <span class="rate-label" style="color:${rateColor}">${ratePct}%</span>
+          </div>
+        </td>`;
+
+      const cells = sliced.map(raw => {
+        const cls = statusClass(raw);
+        return `<td class="status-cell"><span class="status-pill ${pillClass(cls)}">${pillLabel(raw)}</span></td>`;
+      });
+
+      return `<tr>
+        <td class="model-id-cell" title="${m.model_id}">${m.model_id}</td>
+        ${rateCellHtml}
+        ${cells.join('')}
+      </tr>`;
+    });
+    tbody.innerHTML = rows.join('');
+  }
+
+  function applyFilter() {
+    renderTable();
+  }
+
+  // ── Scan ───────────────────────────────────────────────────
+  async function triggerScan() {
+    const btn = document.getElementById('scan-btn');
+    btn.disabled = true;
+    btn.classList.add('scanning');
+
+    try {
+      const res = await fetch('/api/scan', { method: 'POST' });
+      const data = await res.json();
+      if (res.status === 409) {
+        showToast('이미 스캔이 진행 중입니다.', 'info');
+      } else {
+        showToast('스캔이 시작되었습니다. 완료 후 자동으로 업데이트됩니다.', 'success');
+        startPolling();
+      }
+    } catch (e) {
+      showToast('스캔 요청 실패: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('scanning');
+    }
+  }
+
+  function updateScanState(state) {
+    const bar = document.getElementById('scan-status-bar');
+    const btn = document.getElementById('scan-btn');
+    if (!state) return;
+
+    if (state.running) {
+      bar.classList.add('visible');
+      btn.disabled = true;
+      btn.classList.add('scanning');
+    } else {
+      bar.classList.remove('visible');
+      btn.disabled = false;
+      btn.classList.remove('scanning');
+      if (_pollTimer) {
+        clearInterval(_pollTimer);
+        _pollTimer = null;
+      }
+      if (state.error) {
+        showToast('스캔 오류: ' + state.error, 'error');
+      }
+    }
+  }
+
+  function startPolling() {
+    if (_pollTimer) return;
+    _pollTimer = setInterval(async () => {
+      await fetchStatus();
+    }, 4000);
+  }
+
+  // ── Init ──────────────────────────────────────────────────
+  fetchStatus();
+  // Refresh every 60s automatically
+  setInterval(fetchStatus, 60000);
+</script>
+</body>
+</html>

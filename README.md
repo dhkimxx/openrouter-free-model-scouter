@@ -1,6 +1,6 @@
 # openrouter-free-model-scouter
 
-OpenRouter에서 `:free` 모델을 자동으로 수집하고, 각 모델에 테스트 질문을 보내 정상 응답 여부를 체크한 뒤 결과를 Excel(xlsx) 타임라인으로 저장하는 CLI 도구입니다.
+OpenRouter에서 `:free` 모델을 자동으로 수집하고, 각 모델에 테스트 질문을 보내 정상 응답 여부를 체크한 뒤 결과를 SQLite DB 타임라인으로 저장하고 웹 대시보드로 실시간 확인하는 CLI 도구입니다.
 
 ## 요구사항
 
@@ -25,8 +25,12 @@ OpenRouter에서 `:free` 모델을 자동으로 수집하고, 각 모델에 테�
 - `OPENROUTER_SCOUT_REPEAT_COUNT` (기본: `1`)
 - `OPENROUTER_SCOUT_REPEAT_INTERVAL_MINUTES` (기본: `0`)
 - `OPENROUTER_SCOUT_PROMPT` (기본: `Respond with the exact text: OK`)
-- `OPENROUTER_SCOUT_OUTPUT_XLSX_PATH` (기본: `results/history.xlsx`)
+- `OPENROUTER_SCOUT_DB_PATH` (기본: `results/scouter.db`)
 - `OPENROUTER_SCOUT_FAIL_IF_NONE_OK` (기본: `false`)
+- `OPENROUTER_SCOUT_WEB_HOST` (기본: `0.0.0.0`)
+- `OPENROUTER_SCOUT_WEB_PORT` (기본: `8000`)
+
+
 
 ## 설치
 
@@ -62,15 +66,14 @@ uv run openrouter-free-model-scouter scan
 uv run python -m openrouter_free_model_scouter scan
 ```
 
-## 리포트 생성
+## 웹 대시보드
 
-스캔 결과(`results/history.xlsx`)로부터 가용성 트렌드 리포트를 생성합니다.
+스캔 결과(`results/scouter.db`)로부터 가용성 트렌드를 실시간으로 확인할 수 있는 대시보드 서버를 실행할 수 있습니다.
 
 ```bash
-uv run openrouter-free-model-report \
-  --xlsx-path results/history.xlsx \
-  --output-path results/availability-report.md
+uv run openrouter-free-model-scouter serve --host 0.0.0.0 --port 8000
 ```
+접속 주소: `http://localhost:8000/`
 
 ## 스캔 + 리포트 한번에 실행
 
@@ -78,16 +81,13 @@ uv run openrouter-free-model-report \
 
 ```bash
 uv run openrouter-free-model-scouter scan \
-  --output-xlsx-path results/history.xlsx \
+  --db-path results/scouter.db \
   --concurrency 1 \
   --max-retries 3 \
   --request-delay-seconds 1.0 \
   --timeout-seconds 25
 
-uv run openrouter-free-model-report \
-  --xlsx-path results/history.xlsx \
-  --output-path results/availability-report.md \
-  --lookback-runs 24
+uv run openrouter-free-model-scouter serve --port 8000
 ```
 
 Unix 편의 스크립트(`bash`/`zsh`):
@@ -98,7 +98,7 @@ skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh
 
 스크립트 환경변수 오버라이드:
 
-- `SCOUT_XLSX_PATH` (기본: `results/history.xlsx`)
+- `SCOUT_CSV_PATH` (기본: `results/history.csv`)
 - `SCOUT_REPORT_PATH` (기본: `results/availability-report.md`)
 - `SCOUT_LOOKBACK_RUNS` (기본: `24`)
 - `SCOUT_PRINT_SUMMARY` (기본: `1`, `0`이면 요약 출력 비활성화)
@@ -132,17 +132,6 @@ skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh
 
 서술형 AI 요약이 필요하면, 위에서 생성한 `results/summary.md`를 입력으로 summary 주기당 1회만 에이전트를 호출하세요.
 
-## AI 에이전트 통합
-
-여러 AI 코딩 도구에서 자동화 워크플로우로 사용할 수 있습니다.
-
-| 도구 | 설정 파일 |
-| --- | --- |
-| OpenClaw / Claude Code / Cursor / Windsurf | `AGENTS.md` |
-| SKILL.md compatible runners | `skills/openrouter-free-model-watchdog/SKILL.md` |
-
-샘플 리포트 형식은 `skills/openrouter-free-model-watchdog/references/example_report.md`를 참고하세요.
-
 ## 주요 옵션
 
 - `--env-file`: .env 파일 경로(기본: `./.env`)
@@ -156,8 +145,12 @@ skills/openrouter-free-model-watchdog/scripts/run_scan_and_report.sh
 - `--repeat-count`: 반복 실행 횟수
 - `--repeat-interval-minutes`: 반복 주기(분). 두 번째 실행부터 적용
 - `--healthcheck-prompt`: 헬스체크용 테스트 프롬프트
-- `--output-xlsx-path`: 결과 Excel(xlsx) 저장 경로(기본: `results/history.xlsx`)
+- `--db-path`: 결과 DB 저장 경로(기본: `results/scouter.db`)
 - `--fail-if-none-ok`: 성공 모델이 0개면 exit code 3
+
+`serve` 커맨드 옵션:
+- `--host`: 바인딩 호스트(기본: `0.0.0.0`)
+- `--port`: 포트 번호(기본: `8000`)
 
 ## 테스트
 
@@ -167,8 +160,6 @@ uv run python -m unittest discover -s tests -q
 
 ## 결과 파일
 
-- 기본 출력: `results/history.xlsx`
-- 시트: `timeline`
-  - 1행: 실행 시각(문자열)
-  - 1열: `model_id`
-- 리포트 출력(기본): `results/availability-report.md`
+- 기본 출력: `results/scouter.db` (SQLite 파일)
+  - `runs` 테이블: 실행 타임스탬프 기록
+  - `healthchecks` 테이블: 모델별 결과 기록

@@ -98,8 +98,10 @@ class AppConfig:
     repeat_count: int
     repeat_interval_minutes: float
     prompt: str
-    output_xlsx_path: Path
+    db_path: Path
     fail_if_none_ok: bool
+    web_host: str
+    web_port: int
 
     @staticmethod
     def from_sources(
@@ -167,16 +169,19 @@ class AppConfig:
             )
         )
 
-        output_xlsx_path_value = resolve(
-            "output_xlsx_path",
-            "OPENROUTER_SCOUT_OUTPUT_XLSX_PATH",
-            "results/history.xlsx",
+        db_path_value = resolve(
+            "db_path",
+            "OPENROUTER_SCOUT_DB_PATH",
+            "results/scouter.db",
         )
-        output_xlsx_path = Path(str(output_xlsx_path_value))
+        db_path = Path(str(db_path_value))
 
         fail_if_none_ok = bool(
             resolve("fail_if_none_ok", "OPENROUTER_SCOUT_FAIL_IF_NONE_OK", False)
         )
+
+        web_host = str(resolve("web_host", "OPENROUTER_SCOUT_WEB_HOST", "0.0.0.0"))
+        web_port = int(resolve("web_port", "OPENROUTER_SCOUT_WEB_PORT", 8000))
 
         return AppConfig(
             api_key=str(api_key),
@@ -192,6 +197,8 @@ class AppConfig:
             repeat_count=repeat_count,
             repeat_interval_minutes=repeat_interval_minutes,
             prompt=prompt,
-            output_xlsx_path=output_xlsx_path,
+            db_path=db_path,
             fail_if_none_ok=fail_if_none_ok,
+            web_host=web_host,
+            web_port=web_port,
         )

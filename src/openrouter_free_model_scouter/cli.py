@@ -11,7 +11,7 @@ from .config import (
     AppConfig,
     load_simple_dotenv_mapping,
 )
-from .excel_timeline_repository import ExcelTimelineRepository
+from .sqlite_repository import SqliteTimelineRepository
 from .healthcheck_service import HealthcheckService
 from .http_client import HttpClient
 from .model_catalog_service import ModelCatalogService
@@ -22,10 +22,35 @@ def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
 
+    if args.command == "serve":
+        _cmd_serve(args)
+        return
+
     if args.command != "scan":
         parser.print_help()
         raise SystemExit(2)
 
+    _cmd_scan(args)
+
+
+def _cmd_serve(args: argparse.Namespace) -> None:
+    import os
+    import uvicorn
+
+    host = getattr(args, "host", None) or os.environ.get("OPENROUTER_SCOUT_WEB_HOST", "0.0.0.0")
+    port = getattr(args, "port", None) or int(os.environ.get("OPENROUTER_SCOUT_WEB_PORT", "8000"))
+
+    print(f"[WEB] OpenRouter Free Model Scouter 대시보드 시작 중...")
+    print(f"[WEB] http://localhost:{port} 에서 접속하세요")
+    uvicorn.run(
+        "openrouter_free_model_scouter.web.server:app",
+        host=host,
+        port=port,
+        reload=False,
+    )
+
+
+def _cmd_scan(args: argparse.Namespace) -> None:
     project_root = Path.cwd()
     dotenv_path = Path(args.env_file) if args.env_file else (project_root / ".env")
     dotenv_mapping = load_simple_dotenv_mapping(dotenv_path)
@@ -62,11 +87,7 @@ def main() -> None:
     total_ok = 0
     total_failed = 0
 
-    excel_repository = ExcelTimelineRepository()
-    excel_repository.bootstrap_from_csv_if_needed(
-        xlsx_path=config.output_xlsx_path,
-        csv_path=project_root / "results" / "history.csv",
-    )
+    sqlite_repository = SqliteTimelineRepository()
 
     for iteration_index in range(config.repeat_count):
         if iteration_index > 0 and config.repeat_interval_minutes > 0:
@@ -92,8 +113,8 @@ def main() -> None:
             request_delay_seconds=config.request_delay_seconds,
         )
 
-        excel_repository.append_run(
-            config.output_xlsx_path,
+        sqlite_repository.append_run(
+            config.db_path,
             run_datetime=run_datetime,
             results=results,
         )
@@ -109,7 +130,7 @@ def main() -> None:
         )
         print(f"[{current_iteration}/{config.repeat_count}] 성공: {ok_count}")
         print(f"[{current_iteration}/{config.repeat_count}] 실패: {fail_count}")
-        print(f"Excel 저장: {config.output_xlsx_path}")
+        print(f"DB 저장: {config.db_path}")
 
     if config.fail_if_none_ok and total_ok == 0:
         raise SystemExit(3)
@@ -145,7 +166,7 @@ def _build_cli_overrides(args: argparse.Namespace) -> Dict[str, Any]:
         "repeat_count": args.repeat_count,
         "repeat_interval_minutes": args.repeat_interval_minutes,
         "prompt": args.prompt,
-        "output_xlsx_path": args.output_xlsx_path,
+        "db_path": args.db_path,
         "fail_if_none_ok": args.fail_if_none_ok,
     }
 
@@ -154,8 +175,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="openrouter-free-model-scouter")
 
     subparsers = parser.add_subparsers(dest="command")
+
+    # ── scan subcommand ────────────────────────────────────────
     scan = subparsers.add_parser(
-        "scan", help=":free 모델 목록을 가져와 헬스체크하고 Excel(xlsx)로 저장"
+        "scan", help=":free 모델 목록을 가져와 헬스체크하고 DB에 저장"
     )
 
     scan.add_argument(
@@ -244,20 +267,36 @@ def _build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     scan.add_argument(
-        "--output-xlsx-path",
-        dest="output_xlsx_path",
+        "--db-path",
+        dest="db_path",
         default=None,
-        help="Excel(xlsx) 출력 경로(기본: results/history.xlsx)",
+        help="SQLite DB 파일 경로(기본: results/scouter.db)",
     )
     scan.add_argument(
         "--out",
-        dest="output_xlsx_path",
+        dest="db_path",
         default=None,
         help=argparse.SUPPRESS,
     )
 
     scan.add_argument(
         "--fail-if-none-ok", action="store_true", help="성공 모델이 0개면 exit code 3"
+    )
+
+    # ── serve subcommand ───────────────────────────────────────
+    serve = subparsers.add_parser(
+        "serve", help="웹 대시보드 서버를 시작합니다"
+    )
+    serve.add_argument(
+        "--host",
+        default=None,
+        help="바인딩 호스트(기본: 0.0.0.0)",
+    )
+    serve.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="포트(기본: 8000)",
     )
 
     return parser
