@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  scouter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openrouter-scouter
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - OPENROUTER_SCOUT_WEB_HOST=0.0.0.0
+      - OPENROUTER_SCOUT_WEB_PORT=8000
+    volumes:
+      - ./results:/app/results
+    networks:
+      - tech-letter_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.scouter.rule=Host(`openrouter-scouter.duckdns.org`)"
+      - "traefik.http.routers.scouter.entrypoints=websecure"
+      - "traefik.http.routers.scouter.tls=true"
+      - "traefik.http.routers.scouter.tls.certresolver=duckdns"
+      - "traefik.http.services.scouter.loadbalancer.server.port=8000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+networks:
+  tech-letter_default:
+    external: true

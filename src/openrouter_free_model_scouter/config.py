@@ -97,6 +97,7 @@ class AppConfig:
     request_delay_seconds: float
     repeat_count: int
     repeat_interval_minutes: float
+    interval_hours: float
     prompt: str
     db_path: Path
     fail_if_none_ok: bool
@@ -163,6 +164,14 @@ class AppConfig:
             )
         )
 
+        interval_hours = float(
+            resolve(
+                "interval_hours",
+                "OPENROUTER_SCOUT_INTERVAL_HOURS",
+                1.0,
+            )
+        )
+
         prompt = str(
             resolve(
                 "prompt", "OPENROUTER_SCOUT_PROMPT", "Respond with the exact text: OK"
@@ -196,6 +205,7 @@ class AppConfig:
             request_delay_seconds=request_delay_seconds,
             repeat_count=repeat_count,
             repeat_interval_minutes=repeat_interval_minutes,
+            interval_hours=interval_hours,
             prompt=prompt,
             db_path=db_path,
             fail_if_none_ok=fail_if_none_ok,

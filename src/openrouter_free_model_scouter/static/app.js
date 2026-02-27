@@ -67,6 +67,7 @@ function renderModels(models) {
             <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">${statusIcon}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.uptime_24h.toFixed(1)}%</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.avg_latency_24h ? Math.round(model.avg_latency_24h) + ' ms' : '-'}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${createSparkline(model.sparkline_data)}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.consecutive_failures}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                 <button onclick="openHistory('${model.model_id}')" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 font-semibold">History</button>
@@ -116,34 +117,43 @@ function renderChart(history) {
 
     const dates = history.map(h => h.run_datetime);
 
-    const data = history.map(h => {
+    let successes = 0;
+    const dataLatency = [];
+    const dataUptime = [];
+
+    history.forEach((h, i) => {
+        if (h.ok) successes++;
+        // Calculate cumulative uptime
+        const uptime = (successes / (i + 1)) * 100;
+        dataUptime.push(uptime.toFixed(1));
+
         let color = '#10B981'; // green
         if (!h.ok) {
              if (h.status_label === '429') color = '#F59E0B'; // yellow
              else color = '#EF4444'; // red
         }
-        return {
+        dataLatency.push({
             value: h.latency_ms || 0,
             itemStyle: { color: color },
             status: h.status_label,
             date: h.run_datetime
-        };
+        });
     });
 
     const option = {
         tooltip: {
             trigger: 'axis',
-            formatter: function (params) {
-                const item = params[0].data;
-                return `${item.date}<br/>Status: <b>${item.status}</b><br/>Latency: ${item.value} ms`;
-            }
+            axisPointer: { type: 'cross' }
+        },
+        legend: {
+            data: ['Latency', 'Uptime'],
+            textStyle: { color: '#9CA3AF' }
         },
         xAxis: {
             type: 'category',
             data: dates,
             axisLabel: {
                  formatter: function (value) {
-                     // Try to format date
                      try {
                          const d = new Date(value);
                          if (!isNaN(d.getTime())) {
@@ -154,15 +164,37 @@ function renderChart(history) {
                  }
             }
         },
-        yAxis: {
-            type: 'value',
-            name: 'Latency (ms)'
-        },
+        yAxis: [
+            {
+                type: 'value',
+                name: 'Latency (ms)',
+                position: 'left',
+                axisLine: { show: true, lineStyle: { color: '#9CA3AF' } }
+            },
+            {
+                type: 'value',
+                name: 'Uptime (%)',
+                min: 0,
+                max: 100,
+                position: 'right',
+                axisLine: { show: true, lineStyle: { color: '#9CA3AF' } },
+                splitLine: { show: false }
+            }
+        ],
         series: [
             {
-                data: data,
+                name: 'Latency',
+                data: dataLatency,
                 type: 'bar',
-                name: 'Latency'
+                yAxisIndex: 0
+            },
+            {
+                name: 'Uptime',
+                data: dataUptime,
+                type: 'line',
+                yAxisIndex: 1,
+                itemStyle: { color: '#8B5CF6' }, // purple line
+                smooth: true
             }
         ]
     };
@@ -181,4 +213,28 @@ function closeModal() {
         chartInstance.dispose();
         chartInstance = null;
     }
+}
+
+function createSparkline(data) {
+    if (!data || data.length === 0) return '-';
+    const width = 100;
+    const height = 24;
+    const barWidth = Math.max(1, Math.floor(width / data.length) - 1);
+    
+    const validData = data.filter(d => d !== null);
+    const maxVal = validData.length > 0 ? Math.max(...validData) : 100;
+    
+    let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" class="overflow-visible inline-block">`;
+    data.forEach((val, i) => {
+        const x = i * (width / Math.max(1, data.length));
+        if (val === null) {
+            svg += `<rect x="${x}" y="${height - 2}" width="${barWidth}" height="2" fill="#EF4444"></rect>`;
+        } else {
+            const h = Math.max(2, (val / maxVal) * height);
+            const y = height - h;
+            svg += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" fill="#3B82F6" opacity="0.7"></rect>`;
+        }
+    });
+    svg += `</svg>`;
+    return svg;
 }

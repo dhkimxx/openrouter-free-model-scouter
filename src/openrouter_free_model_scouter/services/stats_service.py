@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from ..models import Run, HealthCheck
 
+
 class StatsService:
     def __init__(self, db: Session):
         self.db = db
@@ -19,10 +20,12 @@ class StatsService:
                 "healthy_count": 0,
                 "degraded_count": 0,
                 "down_count": 0,
-                "last_updated": None
+                "last_updated": None,
             }
 
-        checks = self.db.query(HealthCheck).filter(HealthCheck.run_id == latest_run.id).all()
+        checks = (
+            self.db.query(HealthCheck).filter(HealthCheck.run_id == latest_run.id).all()
+        )
         total_models = len(checks)
 
         # Simple heuristic for now: OK -> healthy, others -> down
@@ -33,14 +36,20 @@ class StatsService:
         return {
             "total_models": total_models,
             "healthy_count": healthy_count,
-            "degraded_count": 0, # Placeholder
+            "degraded_count": 0,  # Placeholder
             "down_count": down_count,
-            "last_updated": latest_run.run_datetime
+            "last_updated": latest_run.run_datetime,
         }
 
     def get_model_history(self, model_id: str, limit: int = 50) -> List[Dict]:
         query = (
-            self.db.query(Run.run_datetime, HealthCheck.ok, HealthCheck.latency_ms, HealthCheck.http_status, HealthCheck.error_category)
+            self.db.query(
+                Run.run_datetime,
+                HealthCheck.ok,
+                HealthCheck.latency_ms,
+                HealthCheck.http_status,
+                HealthCheck.error_category,
+            )
             .join(HealthCheck, Run.id == HealthCheck.run_id)
             .filter(HealthCheck.model_id == model_id)
             .order_by(Run.id.desc())
@@ -59,12 +68,14 @@ class StatsService:
                 else:
                     status_label = "FAIL"
 
-            history.append({
-                "run_datetime": run_datetime,
-                "ok": ok,
-                "latency_ms": latency,
-                "status_label": status_label
-            })
+            history.append(
+                {
+                    "run_datetime": run_datetime,
+                    "ok": ok,
+                    "latency_ms": latency,
+                    "status_label": status_label,
+                }
+            )
         return history
 
     def get_models_stats(self, lookback_hours: int = 24) -> List[Dict]:
@@ -73,7 +84,12 @@ class StatsService:
         if not latest_run:
             return []
 
-        latest_checks = {c.model_id: c for c in self.db.query(HealthCheck).filter(HealthCheck.run_id == latest_run.id).all()}
+        latest_checks = {
+            c.model_id: c
+            for c in self.db.query(HealthCheck)
+            .filter(HealthCheck.run_id == latest_run.id)
+            .all()
+        }
         model_ids = list(latest_checks.keys())
 
         # For stats, we need history.
@@ -114,14 +130,18 @@ class StatsService:
 
             total_attempts = len(m_checks)
             success_count = sum(1 for c in m_checks if c.ok)
-            uptime = (success_count / total_attempts) * 100 if total_attempts > 0 else 0.0
+            uptime = (
+                (success_count / total_attempts) * 100 if total_attempts > 0 else 0.0
+            )
 
-            latencies = [c.latency_ms for c in m_checks if c.ok and c.latency_ms is not None]
+            latencies = [
+                c.latency_ms for c in m_checks if c.ok and c.latency_ms is not None
+            ]
             avg_latency = sum(latencies) / len(latencies) if latencies else None
 
             # Consecutive failures from latest
             consecutive_failures = 0
-            for c in m_checks: # already sorted latest first
+            for c in m_checks:  # already sorted latest first
                 if not c.ok:
                     consecutive_failures += 1
                 else:
@@ -138,14 +158,23 @@ class StatsService:
                     else:
                         latest_status = "FAIL"
             else:
-                 latest_status = "MISS"
+                latest_status = "MISS"
 
-            stats.append({
-                "model_id": mid,
-                "uptime_24h": uptime,
-                "avg_latency_24h": avg_latency,
-                "consecutive_failures": consecutive_failures,
-                "latest_status": latest_status
-            })
+            # Generate sparkline data (max 24 points, from oldest to newest)
+            sparkline_points = m_checks[:24]
+            sparkline_data = [
+                c.latency_ms if c.ok else None for c in reversed(sparkline_points)
+            ]
+
+            stats.append(
+                {
+                    "model_id": mid,
+                    "uptime_24h": uptime,
+                    "avg_latency_24h": avg_latency,
+                    "consecutive_failures": consecutive_failures,
+                    "latest_status": latest_status,
+                    "sparkline_data": sparkline_data,
+                }
+            )
 
         return stats

@@ -1,0 +1,14 @@
+services:
+  scouter:
+    build: .
+    container_name: openrouter-scouter
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./results:/app/results
+    env_file:
+      - .env
+    environment:
+      - OPENROUTER_SCOUT_WEB_HOST=0.0.0.0
+      - OPENROUTER_SCOUT_WEB_PORT=8000
+    restart: unless-stopped

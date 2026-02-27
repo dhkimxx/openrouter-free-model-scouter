@@ -20,8 +20,10 @@ htmlcov/
 config.yaml
 
 # Outputs
-results/availability-report.md
-results/summary.md
+results/*.db
+results/*.db-journal
+results/*.csv
+results/*.md
 results/logs/
 
 # OS files

@@ -1,12 +1,14 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+
 class RunSchema(BaseModel):
     id: int
     run_datetime: str
 
     class Config:
         from_attributes = True
+
 
 class HealthCheckSchema(BaseModel):
     id: int
@@ -20,18 +22,22 @@ class HealthCheckSchema(BaseModel):
     class Config:
         from_attributes = True
 
+
 class ModelStats(BaseModel):
     model_id: str
     uptime_24h: float
     avg_latency_24h: Optional[float]
     consecutive_failures: int
     latest_status: str  # e.g., "OK", "FAIL", "429"
+    sparkline_data: List[Optional[int]] = []
+
 
 class ModelHistoryPoint(BaseModel):
     run_datetime: str
     ok: bool
     latency_ms: Optional[int]
     status_label: str
+
 
 class Summary(BaseModel):
     total_models: int
