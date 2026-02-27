@@ -1,6 +1,11 @@
+let allModels = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchSummary();
     fetchModels();
+
+    // Search handler
+    document.getElementById('searchInput').addEventListener('input', filterModels);
 
     // Close modal handlers
     document.getElementById('modal-close').addEventListener('click', closeModal);
@@ -8,6 +13,42 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === document.getElementById('modal')) closeModal();
     });
 });
+
+function sortModels(models) {
+    models.sort((a, b) => {
+        // 1. Uptime descending
+        if (a.uptime_24h !== b.uptime_24h) {
+            return b.uptime_24h - a.uptime_24h;
+        }
+        // 2. Latency ascending (null as infinity)
+        const latA = a.avg_latency_24h !== null ? a.avg_latency_24h : Infinity;
+        const latB = b.avg_latency_24h !== null ? b.avg_latency_24h : Infinity;
+        if (latA !== latB) {
+            return latA - latB;
+        }
+        // 3. Model ID ascending
+        return a.model_id.localeCompare(b.model_id);
+    });
+    return models;
+}
+
+function filterModels() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = allModels.filter(model => model.model_id.toLowerCase().includes(searchTerm));
+    renderModels(filtered);
+}
+
+function copyToClipboard(text, btnElement) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalContent = btnElement.innerHTML;
+        btnElement.innerHTML = '✅';
+        setTimeout(() => {
+            btnElement.innerHTML = originalContent;
+        }, 1500);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
 
 async function fetchSummary() {
     try {
@@ -28,7 +69,9 @@ async function fetchModels() {
     try {
         const res = await fetch('/api/models');
         const data = await res.json();
-        renderModels(data);
+        allModels = data;
+        sortModels(allModels);
+        filterModels();
     } catch (err) {
         console.error('Failed to fetch models:', err);
     }
@@ -45,26 +88,31 @@ function renderModels(models) {
         // Determine status class
         let statusClass = "text-gray-500";
         let statusIcon = "UNKNOWN";
-        if (model.latest_status === "OK") {
+
+        // Status Indicators logic update
+        if (model.uptime_24h >= 90) {
             statusClass = "text-green-500 font-bold";
-            statusIcon = "✅ OK";
-        } else if (model.latest_status === "429") {
+            statusIcon = "🟢 OK";
+        } else if (model.uptime_24h >= 50) {
             statusClass = "text-yellow-500 font-bold";
-            statusIcon = "⚠️ 429";
-        } else if (model.latest_status.startsWith("HTTP")) {
-            statusClass = "text-orange-500 font-bold";
-            statusIcon = `⚠️ ${model.latest_status}`;
-        } else if (model.latest_status === "FAIL") {
-            statusClass = "text-red-500 font-bold";
-            statusIcon = "❌ FAIL";
+            statusIcon = "🟡 UNSTABLE";
         } else {
-            statusClass = "text-gray-400";
-            statusIcon = model.latest_status;
+            statusClass = "text-red-500 font-bold";
+            statusIcon = "🔴 DOWN";
         }
 
+        // Keep old status icon if detailed status is needed, but requirement said "Status Indicators"
+        // Let's append the detailed status label for clarity if it differs significantly
+        // or just stick to the new requirement. The requirement says:
+        // "🟢 Normal (Uptime 90%+)", "🟡 Unstable (50-89%)", "🔴 Down (<50%)"
+        // I will use these.
+
         tr.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">${model.model_id}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">${statusIcon}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
+                ${model.model_id}
+                <button onclick="copyToClipboard('${model.model_id}', this)" class="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition" title="Copy Model ID">📋</button>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">${statusIcon} <span class="text-xs font-normal text-gray-400">(${model.latest_status})</span></td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.uptime_24h.toFixed(1)}%</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.avg_latency_24h ? Math.round(model.avg_latency_24h) + ' ms' : '-'}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${createSparkline(model.sparkline_data)}</td>

@@ -1,0 +1,20 @@
+INFO:     Started server process [7113]
+INFO:     Waiting for application startup.
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:openrouter_free_model_scouter.main:Scheduling automatic scans every 1.0 hours.
+INFO:apscheduler.scheduler:Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO:apscheduler.scheduler:Added job "run_scheduled_scan" to job store "default"
+INFO:apscheduler.scheduler:Added job "run_scheduled_scan" to job store "default"
+INFO:apscheduler.scheduler:Scheduler started
+INFO:     Application startup complete.
+INFO:apscheduler.executors.default:Running job "run_scheduled_scan (trigger: date[2026-02-27 06:54:43 UTC], next run at: 2026-02-27 06:54:43 UTC)" (scheduled at 2026-02-27 06:54:43.099283+00:00)
+INFO:openrouter_free_model_scouter.main:Starting scheduled OpenRouter model scan...
+INFO:apscheduler.scheduler:Removed job 37456d6591f74bce945a059ad19d0199
+ERROR:openrouter_free_model_scouter.main:No OPENROUTER_API_KEY found. Skipping scan.
+INFO:apscheduler.executors.default:Job "run_scheduled_scan (trigger: date[2026-02-27 06:54:43 UTC], next run at: 2026-02-27 06:54:43 UTC)" executed successfully
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:45124 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45124 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45134 - "GET /app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45124 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45134 - "GET /api/summary HTTP/1.1" 200 OK
