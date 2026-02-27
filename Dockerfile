@@ -4,7 +4,7 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-    
+
 ENV PATH="/root/.local/bin:$PATH"
 ENV UV_PROJECT_ENVIRONMENT="/app/.venv"
 
@@ -13,16 +13,11 @@ WORKDIR /app
 # Ensure /app/results directory exists
 RUN mkdir -p /app/results
 
-# Copy requirements/lockfile first (to leverage Docker layer caching)
-COPY pyproject.toml uv.lock ./
-# Install dependencies into /app/.venv
-RUN uv sync --frozen --no-dev
-
-# Copy application code
+# Copy application code before sync so editable install doesn't fail
 COPY src /app/src
-COPY README.md /app/
+COPY pyproject.toml uv.lock README.md /app/
 
-# Install the project application code
+# Install the project application code and dependencies
 RUN uv sync --frozen --no-dev
 
 # Expose port
