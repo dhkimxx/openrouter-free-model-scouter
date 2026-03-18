@@ -23,20 +23,26 @@ class StatsService:
                 "last_updated": None,
             }
 
-        checks = (
-            self.db.query(HealthCheck).filter(HealthCheck.run_id == latest_run.id).all()
-        )
-        total_models = len(checks)
+        stats = self.get_models_stats()
+        total_models = len(stats)
 
-        # Simple heuristic for now: OK -> healthy, others -> down
-        # Ideally, we should look at history for degraded
-        healthy_count = sum(1 for c in checks if c.ok)
-        down_count = total_models - healthy_count
+        healthy_count = 0
+        degraded_count = 0
+        down_count = 0
+
+        for model_stat in stats:
+            uptime = model_stat.get("uptime_24h", 0.0)
+            if uptime >= 90.0:
+                healthy_count += 1
+            elif uptime >= 50.0:
+                degraded_count += 1
+            else:
+                down_count += 1
 
         return {
             "total_models": total_models,
             "healthy_count": healthy_count,
-            "degraded_count": 0,  # Placeholder
+            "degraded_count": degraded_count,
             "down_count": down_count,
             "last_updated": latest_run.run_datetime,
         }
