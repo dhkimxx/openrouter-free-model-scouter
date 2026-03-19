@@ -41,7 +41,7 @@ function filterModels() {
 function copyToClipboard(text, btnElement) {
     navigator.clipboard.writeText(text).then(() => {
         const originalContent = btnElement.innerHTML;
-        btnElement.innerHTML = '✅';
+        btnElement.innerHTML = 'Copied!';
         setTimeout(() => {
             btnElement.innerHTML = originalContent;
         }, 1500);
@@ -92,27 +92,21 @@ function renderModels(models) {
         // Status Indicators logic update
         if (model.uptime_24h >= 90) {
             statusClass = "text-green-500 font-bold";
-            statusIcon = "🟢 OK";
+            statusIcon = "🟢 정상";
         } else if (model.uptime_24h >= 50) {
             statusClass = "text-yellow-500 font-bold";
-            statusIcon = "🟡 UNSTABLE";
+            statusIcon = "🟡 불안정";
         } else {
             statusClass = "text-red-500 font-bold";
-            statusIcon = "🔴 DOWN";
+            statusIcon = "🔴 장애/오류";
         }
-
-        // Keep old status icon if detailed status is needed, but requirement said "Status Indicators"
-        // Let's append the detailed status label for clarity if it differs significantly
-        // or just stick to the new requirement. The requirement says:
-        // "🟢 Normal (Uptime 90%+)", "🟡 Unstable (50-89%)", "🔴 Down (<50%)"
-        // I will use these.
 
         tr.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
                 ${model.model_id}
                 <button onclick="copyToClipboard('${model.model_id}', this)" class="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition" title="Copy Model ID">📋</button>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">${statusIcon} <span class="text-xs font-normal text-gray-400">(${model.latest_status})</span></td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">${statusIcon}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.uptime_24h.toFixed(1)}%</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.avg_latency_24h ? Math.round(model.avg_latency_24h) + ' ms' : '-'}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${createSparkline(model.sparkline_data)}</td>
