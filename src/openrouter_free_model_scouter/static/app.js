@@ -39,15 +39,35 @@ function filterModels() {
 }
 
 function copyToClipboard(text, btnElement) {
-    navigator.clipboard.writeText(text).then(() => {
+    const onSuccess = () => {
         const originalContent = btnElement.innerHTML;
         btnElement.innerHTML = '✅';
         setTimeout(() => {
             btnElement.innerHTML = originalContent;
         }, 1500);
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-    });
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(err => {
+            console.error('Failed to copy: ', err);
+        });
+    } else {
+        // Fallback for non-HTTPS environments
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            onSuccess();
+        } catch (err) {
+            console.error('Failed to copy (fallback): ', err);
+        } finally {
+            textArea.remove();
+        }
+    }
 }
 
 async function fetchSummary() {
