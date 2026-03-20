@@ -34,3 +34,8 @@ results/logs/
 .idea/
 
 ~$*.xlsx
+
+
+
+.agents
+skills-lock.json
