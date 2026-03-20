@@ -87,6 +87,12 @@
                 </button>
             </div>
             <div class="p-4 flex-1 overflow-y-auto">
+                <div class="flex space-x-2 mb-4 justify-center" id="period-selector">
+                    <button onclick="openHistory(window.currentModelId, '1d')" data-period="1d" class="px-3 py-1 rounded bg-blue-600 text-white text-sm font-semibold period-btn">1 Day</button>
+                    <button onclick="openHistory(window.currentModelId, '1w')" data-period="1w" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-semibold period-btn">1 Week</button>
+                    <button onclick="openHistory(window.currentModelId, '1m')" data-period="1m" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-semibold period-btn">1 Month</button>
+                    <button onclick="openHistory(window.currentModelId, '1y')" data-period="1y" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-semibold period-btn">1 Year</button>
+                </div>
                 <div id="chart-container" style="width: 100%; height: 400px;"></div>
             </div>
         </div>

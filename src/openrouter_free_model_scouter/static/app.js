@@ -148,12 +148,27 @@ function renderModels(models) {
 let chartInstance = null;
 
 // Expose to window for onclick handler
-window.openHistory = async function(modelId) {
+window.openHistory = async function(modelId, period = '1d') {
     const modal = document.getElementById('modal');
     const title = document.getElementById('modal-title');
     const chartContainer = document.getElementById('chart-container');
 
-    title.textContent = `History: ${modelId}`;
+    // Save state
+    window.currentModelId = modelId;
+    window.currentPeriod = period;
+
+    // Update button UI
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        if (btn.getAttribute('data-period') === period) {
+            btn.classList.add('bg-blue-600', 'text-white');
+            btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+        } else {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-200');
+        }
+    });
+
+    title.textContent = `History: ${modelId} (${period})`;
     modal.classList.remove('hidden');
 
     // Clear previous chart
@@ -164,11 +179,7 @@ window.openHistory = async function(modelId) {
     chartInstance.showLoading();
 
     try {
-        // Handle modelId with slashes by URL encoding or relying on path handling
-        // If modelId is "google/gemma", URL becomes "/api/models/google/gemma/history"
-        // This is valid path for our router.
-
-        const res = await fetch(`/api/models/${modelId}/history`);
+        const res = await fetch(`/api/models/${modelId}/history?period=${period}`);
         if (!res.ok) throw new Error('Failed to fetch history');
         const history = await res.json();
 

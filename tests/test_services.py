@@ -36,8 +36,13 @@ def test_stats_service_basic(db):
     assert model_b["latest_status"] == "429"
 
 def test_history(db):
-    run1 = Run(run_datetime="2023-01-01 10:00:00")
-    run2 = Run(run_datetime="2023-01-01 11:00:00")
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    r1_dt = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+    r2_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+
+    run1 = Run(run_datetime=r1_dt)
+    run2 = Run(run_datetime=r2_dt)
     db.add_all([run1, run2])
     db.commit()
 
@@ -47,16 +52,42 @@ def test_history(db):
     db.commit()
 
     service = StatsService(db)
-    history = service.get_model_history("model-a")
+    history = service.get_model_history("model-a", period="1d")
     assert len(history) == 2
-    # Oldest first?
-    # StatsService code: "for ... in reversed(results)" where results are order_by(Run.id.desc())
-    # results = [run2_check, run1_check]
-    # reversed -> [run1_check, run2_check] (Oldest first)
-
-    assert history[0]["run_datetime"] == "2023-01-01 10:00:00"
+    
+    # Oldest first in results after processing
+    assert history[0]["run_datetime"] == r1_dt
     assert history[0]["ok"] is True
 
-    assert history[1]["run_datetime"] == "2023-01-01 11:00:00"
+    assert history[1]["run_datetime"] == r2_dt
     assert history[1]["ok"] is False
     assert history[1]["status_label"] == "HTTP 500"
+
+def test_history_periods(db):
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    
+    # 2 days ago (should be in 1w, not in 1d)
+    r_old_dt = (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
+    # 1 hour ago (should be in both)
+    r_new_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+
+    run_old = Run(run_datetime=r_old_dt)
+    run_new = Run(run_datetime=r_new_dt)
+    db.add_all([run_old, run_new])
+    db.commit()
+
+    db.add(HealthCheck(run_id=run_old.id, model_id="model-p", ok=True))
+    db.add(HealthCheck(run_id=run_new.id, model_id="model-p", ok=True))
+    db.commit()
+
+    service = StatsService(db)
+    
+    # Check 1d
+    history_1d = service.get_model_history("model-p", period="1d")
+    assert len(history_1d) == 1
+    assert history_1d[0]["run_datetime"] == r_new_dt
+
+    # Check 1w
+    history_1w = service.get_model_history("model-p", period="1w")
+    assert len(history_1w) == 2

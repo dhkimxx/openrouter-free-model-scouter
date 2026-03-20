@@ -19,6 +19,6 @@ def get_models(db: Session = Depends(get_db)):
     return service.get_models_stats()
 
 @router.get("/models/{model_id:path}/history", response_model=List[ModelHistoryPoint])
-def get_model_history(model_id: str, db: Session = Depends(get_db)):
+def get_model_history(model_id: str, period: str = "1d", db: Session = Depends(get_db)):
     service = StatsService(db)
-    return service.get_model_history(model_id)
+    return service.get_model_history(model_id, period=period)

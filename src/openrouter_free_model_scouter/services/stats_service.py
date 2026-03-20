@@ -47,7 +47,23 @@ class StatsService:
             "last_updated": latest_run.run_datetime,
         }
 
-    def get_model_history(self, model_id: str, limit: int = 50) -> List[Dict]:
+    def get_model_history(self, model_id: str, period: str = "1d") -> List[Dict]:
+        """
+        Get history for a model based on period.
+        Periods: 1d (24h), 1w (7d), 1m (30d), 1y (365d)
+        """
+        now = datetime.now()
+        if period == "1w":
+            delta = timedelta(days=7)
+        elif period == "1m":
+            delta = timedelta(days=30)
+        elif period == "1y":
+            delta = timedelta(days=365)
+        else:  # default 1d
+            delta = timedelta(days=1)
+
+        since = (now - delta).strftime("%Y-%m-%d %H:%M:%S")
+
         query = (
             self.db.query(
                 Run.run_datetime,
@@ -58,8 +74,9 @@ class StatsService:
             )
             .join(HealthCheck, Run.id == HealthCheck.run_id)
             .filter(HealthCheck.model_id == model_id)
+            .filter(Run.run_datetime >= since)
             .order_by(Run.id.desc())
-            .limit(limit)
+            .limit(10000)  # High limit to cover the period
         )
         results = query.all()
 
