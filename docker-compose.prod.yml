@@ -12,6 +12,7 @@ services:
     environment:
       - OPENROUTER_SCOUT_WEB_HOST=0.0.0.0
       - OPENROUTER_SCOUT_WEB_PORT=8000
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     volumes:
       - ./results:/app/results
     ports:
