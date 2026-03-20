@@ -235,10 +235,17 @@ function renderChart(history) {
                  formatter: function (value) {
                      try {
                          const d = new Date(value);
-                         if (!isNaN(d.getTime())) {
-                            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                         if (isNaN(d.getTime())) return value;
+                         
+                         const HHmm = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+                         if (window.currentPeriod === '1d') {
+                             return HHmm;
+                         } else if (window.currentPeriod === '1y') {
+                             return (d.getMonth() + 1) + '/' + d.getDate() + '\n' + d.getFullYear();
+                         } else {
+                             // 1w, 1m
+                             return (d.getMonth() + 1) + '/' + d.getDate() + '\n' + HHmm;
                          }
-                         return value.split(' ')[1] || value;
                      } catch(e) { return value; }
                  }
             }
