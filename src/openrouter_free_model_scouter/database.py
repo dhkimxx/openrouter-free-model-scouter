@@ -2,14 +2,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
-DB_PATH = os.environ.get("OPENROUTER_SCOUT_DB_PATH", "results/scouter.db")
-# Ensure directory exists
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+SQLALCHEMY_DATABASE_URL = os.environ.get(
+    "OPENROUTER_SCOUT_DB_URI", "postgresql://postgres:postgres@db:5432/scouter"
+)
 
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+connect_args = {}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+    db_path = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "")
+    if os.path.dirname(db_path):
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL, connect_args=connect_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

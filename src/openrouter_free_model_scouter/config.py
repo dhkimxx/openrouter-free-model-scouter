@@ -99,7 +99,7 @@ class AppConfig:
     repeat_interval_minutes: float
     interval_hours: float
     prompt: str
-    db_path: Path
+    db_uri: str
     fail_if_none_ok: bool
     web_host: str
     web_port: int
@@ -178,12 +178,11 @@ class AppConfig:
             )
         )
 
-        db_path_value = resolve(
-            "db_path",
-            "OPENROUTER_SCOUT_DB_PATH",
-            "results/scouter.db",
-        )
-        db_path = Path(str(db_path_value))
+        db_uri = str(resolve(
+            "db_uri",
+            "OPENROUTER_SCOUT_DB_URI",
+            "postgresql://postgres:postgres@db:5432/scouter",
+        ))
 
         fail_if_none_ok = bool(
             resolve("fail_if_none_ok", "OPENROUTER_SCOUT_FAIL_IF_NONE_OK", False)
@@ -207,7 +206,7 @@ class AppConfig:
             repeat_interval_minutes=repeat_interval_minutes,
             interval_hours=interval_hours,
             prompt=prompt,
-            db_path=db_path,
+            db_uri=db_uri,
             fail_if_none_ok=fail_if_none_ok,
             web_host=web_host,
             web_port=web_port,

@@ -16,6 +16,7 @@ dependencies = [
     "sqlalchemy>=2.0.47",
     "httpx>=0.28.1",
     "apscheduler>=3.11.2",
+    "psycopg2-binary>=2.9.9",
 ]
 
 [project.scripts]

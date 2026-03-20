@@ -10,6 +10,9 @@ jobs:
   test:
     runs-on: [self-hosted, Linux, ARM64]
     steps:
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER ${{ github.workspace }} || true
+
       - uses: actions/checkout@v4
       
       - name: Install uv
@@ -35,6 +38,9 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER ${{ github.workspace }} || true
+
       - uses: actions/checkout@v4
 
       - name: Deploy with Docker Compose
