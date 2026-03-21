@@ -1,21 +1,23 @@
-from unittest.mock import MagicMock
+import pytest
+from unittest.mock import AsyncMock, MagicMock
 from openrouter_free_model_scouter.worker.scouter import ScouterWorker
 from openrouter_free_model_scouter.config import AppConfig
 from openrouter_free_model_scouter.domain_models import HealthcheckResult
 from openrouter_free_model_scouter.models import Run, HealthCheck
 
 
-def test_worker_scan(db):
-    mock_client = MagicMock()
+@pytest.mark.asyncio
+async def test_worker_scan(db):
+    mock_client = AsyncMock()
 
     # Instantiate worker
     worker = ScouterWorker(db, mock_client)
 
     # Mock services on the worker instance
-    worker.catalog_service.get_free_models = MagicMock(
+    worker.catalog_service.get_free_models = AsyncMock(
         return_value=[{"id": "model-a", "pricing": {"prompt": "0", "completion": "0"}}]
     )
-    worker.healthcheck_service.check_models = MagicMock(
+    worker.healthcheck_service.check_models = AsyncMock(
         return_value=[
             HealthcheckResult(
                 run_id="1",
@@ -34,7 +36,7 @@ def test_worker_scan(db):
 
     config = AppConfig.from_sources(cli_overrides={"api_key": "test"}, env={})
 
-    run_id, results = worker.run_scan(config)
+    run_id, results = await worker.run_scan(config)
 
     assert run_id is not None
     assert len(results) == 1
@@ -49,17 +51,18 @@ def test_worker_scan(db):
     assert checks[0].latency_ms == 123
 
 
-def test_worker_scan_errors(db):
-    mock_client = MagicMock()
+@pytest.mark.asyncio
+async def test_worker_scan_errors(db):
+    mock_client = AsyncMock()
     worker = ScouterWorker(db, mock_client)
 
-    worker.catalog_service.get_free_models = MagicMock(
+    worker.catalog_service.get_free_models = AsyncMock(
         return_value=[
             {"id": "model-429", "pricing": {"prompt": "0", "completion": "0"}},
             {"id": "model-500", "pricing": {"prompt": "0", "completion": "0"}},
         ]
     )
-    worker.healthcheck_service.check_models = MagicMock(
+    worker.healthcheck_service.check_models = AsyncMock(
         return_value=[
             HealthcheckResult(
                 run_id="1",
@@ -89,7 +92,7 @@ def test_worker_scan_errors(db):
     )
 
     config = AppConfig.from_sources(cli_overrides={"api_key": "test"}, env={})
-    run_id, results = worker.run_scan(config)
+    run_id, results = await worker.run_scan(config)
 
     assert len(results) == 2
 

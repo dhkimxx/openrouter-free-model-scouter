@@ -1,47 +1,39 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import os
 import logging
 from .api.endpoints import router as api_router
-from .config import AppConfig, load_simple_dotenv_mapping
+from .config import AppConfig
 from .database import get_db, SessionLocal, init_db
 from .worker.scouter import ScouterWorker
-from .openrouter_client import OpenRouterClient
+from .openrouter_client import AsyncOpenRouterClient, OpenRouterClientConfig
+from .http_client import AsyncHttpClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def run_scheduled_scan():
-    logger.info("Starting scheduled OpenRouter model scan...")
-    # Load config from env
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
+async def run_scheduled_scan():
+    logger.info("Starting scheduled OpenRouter model scan (Async)...")
     config = AppConfig.from_sources(cli_overrides={}, env=os.environ)
     if not config.api_key:
         logger.error("No OPENROUTER_API_KEY found. Skipping scan.")
         return
 
-    # Import HttpClient and OpenRouterClientConfig
-    from .openrouter_client import OpenRouterClient, OpenRouterClientConfig
-    from .http_client import HttpClient
-
     db = SessionLocal()
     try:
-        http_client = HttpClient()
+        http_client = AsyncHttpClient()
         client_config = OpenRouterClientConfig(
             api_key=config.api_key,
             base_url=config.base_url,
             http_referer=config.http_referer,
             x_title=config.x_title,
         )
-        client = OpenRouterClient(http_client=http_client, config=client_config)
+        client = AsyncOpenRouterClient(http_client=http_client, config=client_config)
         worker = ScouterWorker(db, client)
-        run_id, results = worker.run_scan(config)
+        run_id, results = await worker.run_scan(config)
 
         success_count = sum(1 for r in results if r.ok)
         logger.info(
@@ -49,6 +41,8 @@ def run_scheduled_scan():
         )
     except Exception as e:
         logger.error(f"Error during scheduled scan: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
     finally:
         db.close()
 
@@ -58,14 +52,10 @@ async def lifespan(app: FastAPI):
     # Initialize DB (creates tables if they don't exist)
     init_db()
 
-    # Load config
-    from dotenv import load_dotenv
-
-    load_dotenv()
     config = AppConfig.from_sources(cli_overrides={}, env=os.environ)
 
     # Initialize Scheduler
-    scheduler = BackgroundScheduler()
+    scheduler = AsyncIOScheduler()
 
     # Run immediately on startup
     scheduler.add_job(run_scheduled_scan, trigger='date')

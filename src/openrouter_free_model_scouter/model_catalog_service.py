@@ -3,20 +3,23 @@ from __future__ import annotations
 from typing import Any, List, Mapping, Optional
 
 from .domain_models import ModelInfo
-from .openrouter_client import OpenRouterClient
+from .openrouter_client import AsyncOpenRouterClient
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ModelCatalogService:
-    def __init__(self, openrouter_client: OpenRouterClient) -> None:
+    def __init__(self, openrouter_client: AsyncOpenRouterClient) -> None:
         self._openrouter_client = openrouter_client
 
-    def get_free_models(
+    async def get_free_models(
         self,
         timeout_seconds: int,
         *,
         model_id_contains: Optional[List[str]] = None,
     ) -> List[ModelInfo]:
-        response, failure_message = self._openrouter_client.list_models(
+        response, failure_message = await self._openrouter_client.list_models(
             timeout_seconds=timeout_seconds
         )
         if failure_message is not None:

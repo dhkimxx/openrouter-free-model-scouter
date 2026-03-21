@@ -62,7 +62,7 @@ class StatsService:
         else:  # default 1d
             delta = timedelta(days=1)
 
-        since = (now - delta).strftime("%Y-%m-%d %H:%M:%S")
+        since = (now - delta).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         query = (
             self.db.query(

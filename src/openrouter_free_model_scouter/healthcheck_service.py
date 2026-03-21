@@ -1,15 +1,13 @@
-from __future__ import annotations
-
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import time
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 from uuid import uuid4
 
 from .domain_models import HealthcheckResult, ModelInfo
-from .http_client import sleep_with_backoff
-from .openrouter_client import OpenRouterClient
+from .http_client import async_sleep_with_backoff
+from .openrouter_client import AsyncOpenRouterClient
 
 
 @dataclass(frozen=True)
@@ -21,10 +19,10 @@ class HealthcheckSummary:
 
 
 class HealthcheckService:
-    def __init__(self, openrouter_client: OpenRouterClient) -> None:
+    def __init__(self, openrouter_client: AsyncOpenRouterClient) -> None:
         self._openrouter_client = openrouter_client
 
-    def check_models(
+    async def check_models(
         self,
         models: List[ModelInfo],
         *,
@@ -35,31 +33,28 @@ class HealthcheckService:
         request_delay_seconds: float,
     ) -> List[HealthcheckResult]:
         run_id = str(uuid4())
+        semaphore = asyncio.Semaphore(max(1, concurrency))
 
-        def task(index: int, model: ModelInfo) -> HealthcheckResult:
-            if request_delay_seconds > 0:
-                time.sleep(request_delay_seconds * index)
-            return self._check_single_model(
-                run_id=run_id,
-                model_id=model.model_id,
-                prompt=prompt,
-                timeout_seconds=timeout_seconds,
-                max_retries=max_retries,
-            )
+        async def sem_task(index: int, model: ModelInfo) -> HealthcheckResult:
+            async with semaphore:
+                if request_delay_seconds > 0:
+                    await asyncio.sleep(request_delay_seconds * index)
+                return await self._check_single_model(
+                    run_id=run_id,
+                    model_id=model.model_id,
+                    prompt=prompt,
+                    timeout_seconds=timeout_seconds,
+                    max_retries=max_retries,
+                )
 
-        results: List[HealthcheckResult] = []
-        with ThreadPoolExecutor(max_workers=max(1, concurrency)) as executor:
-            futures = [
-                executor.submit(task, index, model)
-                for index, model in enumerate(models)
-            ]
-            for future in as_completed(futures):
-                results.append(future.result())
+        results = await asyncio.gather(*(sem_task(i, m) for i, m in enumerate(models)))
+        
+        # Convert to list and sort
+        sorted_results = list(results)
+        sorted_results.sort(key=lambda item: item.model_id)
+        return sorted_results
 
-        results.sort(key=lambda item: item.model_id)
-        return results
-
-    def _check_single_model(
+    async def _check_single_model(
         self,
         *,
         run_id: str,
@@ -75,7 +70,7 @@ class HealthcheckService:
         start_time = time.monotonic()
 
         for attempt in range(0, max_retries + 1):
-            response, failure_message = self._openrouter_client.chat_completion(
+            response, failure_message = await self._openrouter_client.chat_completion(
                 model_id=model_id,
                 prompt=prompt,
                 timeout_seconds=timeout_seconds,
@@ -85,7 +80,7 @@ class HealthcheckService:
                 last_error_category = "network"
                 last_error_message = failure_message
                 if attempt < max_retries:
-                    sleep_with_backoff(attempt)
+                    await async_sleep_with_backoff(attempt)
                     continue
                 return self._build_failure_result(
                     run_id=run_id,
@@ -101,7 +96,7 @@ class HealthcheckService:
                 last_error_category = "unexpected"
                 last_error_message = "응답이 비어있음"
                 if attempt < max_retries:
-                    sleep_with_backoff(attempt)
+                    await async_sleep_with_backoff(attempt)
                     continue
                 return self._build_failure_result(
                     run_id=run_id,
@@ -119,7 +114,7 @@ class HealthcheckService:
                 last_error_category = "rate_limited"
                 last_error_message = self._extract_error_message(response)
                 if attempt < max_retries:
-                    sleep_with_backoff(attempt)
+                    await async_sleep_with_backoff(attempt)
                     continue
                 return self._build_failure_result(
                     run_id=run_id,
@@ -135,7 +130,7 @@ class HealthcheckService:
                 last_error_category = "server_error"
                 last_error_message = self._extract_error_message(response)
                 if attempt < max_retries:
-                    sleep_with_backoff(attempt)
+                    await async_sleep_with_backoff(attempt)
                     continue
                 return self._build_failure_result(
                     run_id=run_id,

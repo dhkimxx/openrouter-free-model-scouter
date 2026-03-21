@@ -9,7 +9,7 @@ def test_stats_service_empty(db):
 
 def test_stats_service_basic(db):
     # Setup data
-    run1 = Run(run_datetime="2023-01-01 10:00:00")
+    run1 = Run(run_datetime="2023-01-01T10:00:00Z")
     db.add(run1)
     db.commit()
 
@@ -38,8 +38,8 @@ def test_stats_service_basic(db):
 def test_history(db):
     from datetime import datetime, timedelta
     now = datetime.now()
-    r1_dt = (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
-    r2_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    r1_dt = (now - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    r2_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     run1 = Run(run_datetime=r1_dt)
     run2 = Run(run_datetime=r2_dt)
@@ -68,9 +68,9 @@ def test_history_periods(db):
     now = datetime.now()
     
     # 2 days ago (should be in 1w, not in 1d)
-    r_old_dt = (now - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
+    r_old_dt = (now - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
     # 1 hour ago (should be in both)
-    r_new_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    r_new_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     run_old = Run(run_datetime=r_old_dt)
     run_new = Run(run_datetime=r_new_dt)

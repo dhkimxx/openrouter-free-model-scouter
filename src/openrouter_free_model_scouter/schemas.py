@@ -1,16 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 
 class RunSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     run_datetime: str
 
-    class Config:
-        from_attributes = True
-
 
 class HealthCheckSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     run_id: int
     model_id: str
@@ -18,9 +19,6 @@ class HealthCheckSchema(BaseModel):
     http_status: Optional[int] = None
     error_category: Optional[str] = None
     latency_ms: Optional[int] = None
-
-    class Config:
-        from_attributes = True
 
 
 class ModelStats(BaseModel):

@@ -10,12 +10,12 @@ class _StubOpenRouterClient:
     def __init__(self, response: HttpResponse) -> None:
         self._response = response
 
-    def list_models(self, timeout_seconds: int):
+    async def list_models(self, timeout_seconds: int):
         return self._response, None
 
 
-class TestModelCatalogService(unittest.TestCase):
-    def test_get_free_models_filters_by_contains_tokens_case_insensitive(self) -> None:
+class TestModelCatalogService(unittest.IsolatedAsyncioTestCase):
+    async def test_get_free_models_filters_by_contains_tokens_case_insensitive(self) -> None:
         response = HttpResponse(
             status_code=200,
             headers={},
@@ -32,7 +32,7 @@ class TestModelCatalogService(unittest.TestCase):
         )
         service = ModelCatalogService(openrouter_client=_StubOpenRouterClient(response))
 
-        models = service.get_free_models(
+        models = await service.get_free_models(
             timeout_seconds=10,
             model_id_contains=["mistral", "google"],
         )

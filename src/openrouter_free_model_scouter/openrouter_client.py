@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from .domain_models import HttpResponse
-from .http_client import HttpClient
+from .http_client import AsyncHttpClient
 
 
 @dataclass(frozen=True)
@@ -15,8 +15,8 @@ class OpenRouterClientConfig:
     x_title: Optional[str]
 
 
-class OpenRouterClient:
-    def __init__(self, http_client: HttpClient, config: OpenRouterClientConfig) -> None:
+class AsyncOpenRouterClient:
+    def __init__(self, http_client: AsyncHttpClient, config: OpenRouterClientConfig) -> None:
         self._http_client = http_client
         self._config = config
 
@@ -31,11 +31,11 @@ class OpenRouterClient:
             headers["X-Title"] = self._config.x_title
         return headers
 
-    def list_models(
+    async def list_models(
         self, timeout_seconds: int
     ) -> Tuple[Optional[HttpResponse], Optional[str]]:
         url = f"{self._config.base_url}/models"
-        response, failure = self._http_client.request_json(
+        response, failure = await self._http_client.request_json(
             method="GET",
             url=url,
             headers=self._build_headers(),
@@ -46,7 +46,7 @@ class OpenRouterClient:
             return None, failure.message
         return response, None
 
-    def chat_completion(
+    async def chat_completion(
         self,
         model_id: str,
         prompt: str,
@@ -61,7 +61,7 @@ class OpenRouterClient:
             "stream": False,
         }
 
-        response, failure = self._http_client.request_json(
+        response, failure = await self._http_client.request_json(
             method="POST",
             url=url,
             headers=self._build_headers(),
@@ -71,3 +71,4 @@ class OpenRouterClient:
         if failure is not None:
             return None, failure.message
         return response, None
+

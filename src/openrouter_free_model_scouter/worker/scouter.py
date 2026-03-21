@@ -4,28 +4,29 @@ from typing import List, Tuple
 from ..models import Run, HealthCheck
 from ..healthcheck_service import HealthcheckService
 from ..model_catalog_service import ModelCatalogService
-from ..openrouter_client import OpenRouterClient
+from ..openrouter_client import AsyncOpenRouterClient
 from ..config import AppConfig
 from ..domain_models import HealthcheckResult
 
+
 class ScouterWorker:
-    def __init__(self, db: Session, client: OpenRouterClient):
+    def __init__(self, db: Session, client: AsyncOpenRouterClient):
         self.db = db
         self.client = client
         self.catalog_service = ModelCatalogService(openrouter_client=client)
         self.healthcheck_service = HealthcheckService(openrouter_client=client)
 
-    def run_scan(self, config: AppConfig) -> Tuple[int, List[HealthcheckResult]]:
+    async def run_scan(self, config: AppConfig) -> Tuple[int, List[HealthcheckResult]]:
         run_datetime = datetime.now()
 
-        models = self.catalog_service.get_free_models(
+        models = await self.catalog_service.get_free_models(
             timeout_seconds=config.timeout_seconds,
             model_id_contains=config.model_id_contains
         )
         if config.max_models is not None:
             models = models[:config.max_models]
 
-        results = self.healthcheck_service.check_models(
+        results = await self.healthcheck_service.check_models(
             models,
             prompt=config.prompt,
             timeout_seconds=config.timeout_seconds,
@@ -35,7 +36,7 @@ class ScouterWorker:
         )
 
         # Save to DB
-        run_record = Run(run_datetime=run_datetime.strftime("%Y-%m-%d %H:%M:%S"))
+        run_record = Run(run_datetime=run_datetime.strftime("%Y-%m-%dT%H:%M:%SZ"))
         self.db.add(run_record)
         self.db.commit()
 

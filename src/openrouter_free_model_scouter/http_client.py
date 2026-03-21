@@ -1,12 +1,7 @@
-from __future__ import annotations
-
+import asyncio
+import httpx
 from dataclasses import dataclass
-import json
-import socket
-import time
 from typing import Any, Dict, Mapping, Optional, Tuple
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 from .domain_models import HttpResponse
 
@@ -18,8 +13,8 @@ class HttpRequestFailure:
     status_code: Optional[int]
 
 
-class HttpClient:
-    def request_json(
+class AsyncHttpClient:
+    async def request_json(
         self,
         method: str,
         url: str,
@@ -27,81 +22,65 @@ class HttpClient:
         payload: Optional[Mapping[str, Any]],
         timeout_seconds: int,
     ) -> Tuple[Optional[HttpResponse], Optional[HttpRequestFailure]]:
-        body_bytes = None
-        if payload is not None:
-            body_bytes = json.dumps(payload).encode("utf-8")
-
+        
         request_headers: Dict[str, str] = {
             "Accept": "application/json",
             **dict(headers),
         }
-        if body_bytes is not None:
-            request_headers.setdefault("Content-Type", "application/json")
-
-        request = Request(
-            url=url, data=body_bytes, headers=request_headers, method=method.upper()
-        )
-
+        
         try:
-            with urlopen(request, timeout=timeout_seconds) as response:
-                response_body = response.read()
-                response_text = response_body.decode("utf-8", errors="replace")
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                if method.upper() == "GET":
+                    response = await client.get(url, headers=request_headers)
+                elif method.upper() == "POST":
+                    response = await client.post(url, headers=request_headers, json=payload)
+                else:
+                    response = await client.request(method.upper(), url, headers=request_headers, json=payload)
 
+                response_text = response.text
                 json_body = None
                 try:
-                    parsed = json.loads(response_text)
-                    if isinstance(parsed, dict):
-                        json_body = parsed
-                except json.JSONDecodeError:
+                    json_body = response.json()
+                except (ValueError, httpx.DecodingError):
                     json_body = None
 
-                headers_mapping = {k: v for k, v in response.headers.items()}
                 return (
                     HttpResponse(
-                        status_code=int(response.status),
-                        headers=headers_mapping,
+                        status_code=response.status_code,
+                        headers=dict(response.headers),
                         body_text=response_text,
                         json_body=json_body,
                     ),
                     None,
                 )
 
-        except HTTPError as error:
-            response_body = error.read()
-            response_text = response_body.decode("utf-8", errors="replace")
-
-            json_body = None
-            try:
-                parsed = json.loads(response_text)
-                if isinstance(parsed, dict):
-                    json_body = parsed
-            except json.JSONDecodeError:
-                json_body = None
-
-            headers_mapping = (
-                {k: v for k, v in error.headers.items()} if error.headers else {}
+        except httpx.HTTPStatusError as error:
+            response = error.response
+            return (
+                HttpResponse(
+                    status_code=response.status_code,
+                    headers=dict(response.headers),
+                    body_text=response.text,
+                    json_body=response.json() if "application/json" in response.headers.get("Content-Type", "") else None,
+                ),
+                None,
             )
-            response = HttpResponse(
-                status_code=int(error.code),
-                headers=headers_mapping,
-                body_text=response_text,
-                json_body=json_body,
-            )
-            return response, None
-
-        except (URLError, socket.timeout) as error:
+        except httpx.NetworkError as error:
             return None, HttpRequestFailure(
                 error_category="network", message=str(error), status_code=None
             )
-
+        except httpx.TimeoutException as error:
+            return None, HttpRequestFailure(
+                error_category="timeout", message=str(error), status_code=None
+            )
         except Exception as error:  # noqa: BLE001
             return None, HttpRequestFailure(
                 error_category="unexpected", message=str(error), status_code=None
             )
 
 
-def sleep_with_backoff(
+async def async_sleep_with_backoff(
     attempt_index: int, base_seconds: float = 0.5, max_seconds: float = 8.0
 ) -> None:
     delay = min(max_seconds, base_seconds * (2**attempt_index))
-    time.sleep(delay)
+    await asyncio.sleep(delay)

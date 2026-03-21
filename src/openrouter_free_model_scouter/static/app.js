@@ -79,7 +79,16 @@ async function fetchSummary() {
         document.getElementById('summary-healthy').textContent = data.healthy_count;
         document.getElementById('summary-degraded').textContent = data.degraded_count;
         document.getElementById('summary-down').textContent = data.down_count;
-        document.getElementById('last-updated').textContent = `Last updated: ${data.last_updated || 'Never'}`;
+        if (data.last_updated) {
+            const d = new Date(data.last_updated);
+            if (!isNaN(d.getTime())) {
+                document.getElementById('last-updated').textContent = `Last updated: ${d.toLocaleString()}`;
+            } else {
+                document.getElementById('last-updated').textContent = `Last updated: ${data.last_updated}`;
+            }
+        } else {
+            document.getElementById('last-updated').textContent = 'Last updated: Never';
+        }
     } catch (err) {
         console.error('Failed to fetch summary:', err);
     }

@@ -11,9 +11,10 @@ from .config import (
     AppConfig,
     load_simple_dotenv_mapping,
 )
+import asyncio
 from .worker.scouter import ScouterWorker
-from .http_client import HttpClient
-from .openrouter_client import OpenRouterClient, OpenRouterClientConfig
+from .http_client import AsyncHttpClient
+from .openrouter_client import AsyncOpenRouterClient, OpenRouterClientConfig
 from .database import SessionLocal, engine, Base
 
 
@@ -29,7 +30,7 @@ def main() -> None:
         parser.print_help()
         raise SystemExit(2)
 
-    _cmd_scan(args)
+    asyncio.run(_cmd_scan(args))
 
 
 def _cmd_serve(args: argparse.Namespace) -> None:
@@ -49,7 +50,7 @@ def _cmd_serve(args: argparse.Namespace) -> None:
     )
 
 
-def _cmd_scan(args: argparse.Namespace) -> None:
+async def _cmd_scan(args: argparse.Namespace) -> None:
     project_root = Path.cwd()
     dotenv_path = Path(args.env_file) if args.env_file else (project_root / ".env")
     dotenv_mapping = load_simple_dotenv_mapping(dotenv_path)
@@ -72,8 +73,8 @@ def _cmd_scan(args: argparse.Namespace) -> None:
         print("OPENROUTER_API_KEY 환경변수가 필요합니다.", file=sys.stderr)
         raise SystemExit(2)
 
-    http_client = HttpClient()
-    openrouter_client = OpenRouterClient(
+    http_client = AsyncHttpClient()
+    openrouter_client = AsyncOpenRouterClient(
         http_client=http_client,
         config=OpenRouterClientConfig(
             api_key=config.api_key,
@@ -96,9 +97,9 @@ def _cmd_scan(args: argparse.Namespace) -> None:
 
         for iteration_index in range(config.repeat_count):
             if iteration_index > 0 and config.repeat_interval_minutes > 0:
-                time.sleep(config.repeat_interval_minutes * 60)
+                await asyncio.sleep(config.repeat_interval_minutes * 60)
 
-            run_id, results = worker.run_scan(config)
+            run_id, results = await worker.run_scan(config)
 
             ok_count = sum(1 for item in results if item.ok)
             fail_count = len(results) - ok_count
@@ -111,7 +112,6 @@ def _cmd_scan(args: argparse.Namespace) -> None:
             )
             print(f"[{current_iteration}/{config.repeat_count}] 성공: {ok_count}")
             print(f"[{current_iteration}/{config.repeat_count}] 실패: {fail_count}")
-            print(f"DB 저장: {config.db_path}")
     finally:
         db.close()
 
