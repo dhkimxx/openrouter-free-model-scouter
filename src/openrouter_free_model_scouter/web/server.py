@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from ..sqlite_repository import SqliteTimelineRepository
+from ..time_utils import format_utc_datetime, utc_now
 
 _HERE = Path(__file__).parent
 
@@ -104,7 +104,7 @@ def _run_scan_task():
     global _scan_state
     _scan_state["running"] = True
     _scan_state["error"] = None
-    _scan_state["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    _scan_state["last_run"] = format_utc_datetime(utc_now())
 
     try:
         from ..config import AppConfig, load_simple_dotenv_mapping
@@ -150,7 +150,7 @@ def _run_scan_task():
         )
 
         repo = SqliteTimelineRepository()
-        repo.append_run(config.db_path, run_datetime=datetime.now(), results=results)
+        repo.append_run(config.db_path, run_datetime=utc_now(), results=results)
 
     except Exception as exc:
         _scan_state["error"] = str(exc)

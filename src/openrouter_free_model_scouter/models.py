@@ -1,14 +1,12 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from .database import Base
 
 class Run(Base):
     __tablename__ = "runs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    # Storing datetime as string to match existing schema: TEXT NOT NULL
-    # Format: YYYY-MM-DD HH:MM:SS
+    # Stored as UTC ISO-8601 text; clients render it in browser-local time.
     run_datetime = Column(String, nullable=False)
 
     healthchecks = relationship("HealthCheck", back_populates="run")

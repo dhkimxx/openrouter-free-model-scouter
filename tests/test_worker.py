@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from openrouter_free_model_scouter.worker.scouter import ScouterWorker
 from openrouter_free_model_scouter.config import AppConfig
@@ -45,6 +46,8 @@ async def test_worker_scan(db):
     # Verify DB
     run = db.query(Run).first()
     assert run is not None
+    run_datetime = datetime.fromisoformat(run.run_datetime.replace("Z", "+00:00"))
+    assert run_datetime.tzinfo == timezone.utc
     checks = db.query(HealthCheck).all()
     assert len(checks) == 1
     assert checks[0].model_id == "model-a"

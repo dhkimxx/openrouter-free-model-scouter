@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
 from .domain_models import HealthcheckResult
+from .time_utils import format_utc_datetime
 
 
 class SqliteTimelineRepository:
@@ -126,6 +127,4 @@ class SqliteTimelineRepository:
         return "FAIL"
 
     def _format_run_datetime(self, value: datetime) -> str:
-        if value.tzinfo is not None:
-            value = value.astimezone().replace(tzinfo=None)
-        return value.strftime("%Y-%m-%d %H:%M:%S")
+        return format_utc_datetime(value)

@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List, Dict, Optional, Tuple
 from ..models import Run, HealthCheck
+from ..time_utils import format_utc_datetime, utc_now
 
 
 class StatsService:
@@ -52,7 +53,7 @@ class StatsService:
         Get history for a model based on period.
         Periods: 1d (24h), 1w (7d), 1m (30d), 1y (365d)
         """
-        now = datetime.now()
+        now = utc_now()
         if period == "1w":
             delta = timedelta(days=7)
         elif period == "1m":
@@ -62,7 +63,7 @@ class StatsService:
         else:  # default 1d
             delta = timedelta(days=1)
 
-        since = (now - delta).strftime("%Y-%m-%dT%H:%M:%SZ")
+        since = format_utc_datetime(now - delta)
 
         query = (
             self.db.query(

@@ -1,5 +1,49 @@
 let allModels = [];
 
+const fullDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short'
+});
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit'
+});
+const monthDayFormatter = new Intl.DateTimeFormat(undefined, {
+    month: 'numeric',
+    day: 'numeric'
+});
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric'
+});
+
+function parseServerTimestamp(value) {
+    if (!value) return null;
+    const text = String(value).trim();
+    const normalized = text.includes('T') ? text : text.replace(' ', 'T');
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatBrowserDateTime(value) {
+    const date = parseServerTimestamp(value);
+    return date ? fullDateTimeFormatter.format(date) : String(value || '-');
+}
+
+function formatChartAxisTime(value, period) {
+    const date = parseServerTimestamp(value);
+    if (!date) return value;
+    if (period === '1d') return timeFormatter.format(date);
+    if (period === '1y') return `${dateFormatter.format(date)}`;
+    return `${monthDayFormatter.format(date)}\n${timeFormatter.format(date)}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchSummary();
     fetchModels();
@@ -80,12 +124,7 @@ async function fetchSummary() {
         document.getElementById('summary-degraded').textContent = data.degraded_count;
         document.getElementById('summary-down').textContent = data.down_count;
         if (data.last_updated) {
-            const d = new Date(data.last_updated);
-            if (!isNaN(d.getTime())) {
-                document.getElementById('last-updated').textContent = `Last updated: ${d.toLocaleString()}`;
-            } else {
-                document.getElementById('last-updated').textContent = `Last updated: ${data.last_updated}`;
-            }
+            document.getElementById('last-updated').textContent = `Last updated: ${formatBrowserDateTime(data.last_updated)}`;
         } else {
             document.getElementById('last-updated').textContent = 'Last updated: Never';
         }
@@ -224,14 +263,28 @@ function renderChart(history) {
             value: h.latency_ms || 0,
             itemStyle: { color: color },
             status: h.status_label,
-            date: h.run_datetime
+            date: formatBrowserDateTime(h.run_datetime)
         });
     });
 
     const option = {
         tooltip: {
             trigger: 'axis',
-            axisPointer: { type: 'cross' }
+            axisPointer: { type: 'cross' },
+            formatter: function (params) {
+                if (!params || !params.length) return '';
+                const point = history[params[0].dataIndex];
+                const lines = [`<strong>${formatBrowserDateTime(point.run_datetime)}</strong>`];
+                params.forEach(item => {
+                    if (item.seriesName === 'Latency') {
+                        const latency = point.latency_ms == null ? '-' : `${point.latency_ms} ms`;
+                        lines.push(`${item.marker}${item.seriesName}: ${latency} (${point.status_label})`);
+                    } else {
+                        lines.push(`${item.marker}${item.seriesName}: ${item.value}%`);
+                    }
+                });
+                return lines.join('<br/>');
+            }
         },
         legend: {
             data: ['Latency', 'Uptime'],
@@ -242,20 +295,7 @@ function renderChart(history) {
             data: dates,
             axisLabel: {
                  formatter: function (value) {
-                     try {
-                         const d = new Date(value);
-                         if (isNaN(d.getTime())) return value;
-                         
-                         const HHmm = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
-                         if (window.currentPeriod === '1d') {
-                             return HHmm;
-                         } else if (window.currentPeriod === '1y') {
-                             return (d.getMonth() + 1) + '/' + d.getDate() + '\n' + d.getFullYear();
-                         } else {
-                             // 1w, 1m
-                             return (d.getMonth() + 1) + '/' + d.getDate() + '\n' + HHmm;
-                         }
-                     } catch(e) { return value; }
+                     return formatChartAxisTime(value, window.currentPeriod);
                  }
             }
         },

@@ -1,6 +1,10 @@
 from openrouter_free_model_scouter.services.stats_service import StatsService
 from openrouter_free_model_scouter.models import Run, HealthCheck
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def utc_timestamp(value: datetime) -> str:
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def test_stats_service_empty(db):
     service = StatsService(db)
@@ -36,10 +40,10 @@ def test_stats_service_basic(db):
     assert model_b["latest_status"] == "429"
 
 def test_history(db):
-    from datetime import datetime, timedelta
-    now = datetime.now()
-    r1_dt = (now - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    r2_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    r1_dt = utc_timestamp(now - timedelta(hours=2))
+    r2_dt = utc_timestamp(now - timedelta(hours=1))
 
     run1 = Run(run_datetime=r1_dt)
     run2 = Run(run_datetime=r2_dt)
@@ -64,13 +68,13 @@ def test_history(db):
     assert history[1]["status_label"] == "HTTP 500"
 
 def test_history_periods(db):
-    from datetime import datetime, timedelta
-    now = datetime.now()
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
     
     # 2 days ago (should be in 1w, not in 1d)
-    r_old_dt = (now - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    r_old_dt = utc_timestamp(now - timedelta(days=2))
     # 1 hour ago (should be in both)
-    r_new_dt = (now - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    r_new_dt = utc_timestamp(now - timedelta(hours=1))
 
     run_old = Run(run_datetime=r_old_dt)
     run_new = Run(run_datetime=r_new_dt)

@@ -496,6 +496,27 @@
     return raw.length > 12 ? raw.slice(0, 12) + '…' : raw;
   }
 
+  const runDateFormatter = new Intl.DateTimeFormat(undefined, {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  function parseRunLabel(value) {
+    if (!value) return null;
+    const text = String(value).trim();
+    const normalized = text.includes('T') ? text : text.replace(' ', 'T');
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function formatRunLabel(value) {
+    const date = parseRunLabel(value);
+    if (!date) return String(value || '—');
+    return runDateFormatter.format(date).replace(', ', '<br>');
+  }
+
   function showToast(msg, type = 'info') {
     const el = document.getElementById('toast');
     el.textContent = msg;
@@ -570,8 +591,7 @@
     const thead = document.getElementById('timeline-head');
     const headerCols = ['<th class="model-col">모델 ID</th>', '<th class="run-col">OK 율</th>'];
     visibleLabels.forEach(lbl => {
-      const short = lbl.replace(/(\d{4}-\d{2}-\d{2}) /, '$1<br>');
-      headerCols.push(`<th class="run-col">${short}</th>`);
+      headerCols.push(`<th class="run-col" title="${lbl}">${formatRunLabel(lbl)}</th>`);
     });
     thead.innerHTML = `<tr>${headerCols.join('')}</tr>`;
 

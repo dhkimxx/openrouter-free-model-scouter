@@ -1,4 +1,5 @@
 from openrouter_free_model_scouter.models import Run, HealthCheck
+from datetime import datetime, timezone
 
 def test_get_summary_empty(client):
     response = client.get("/api/summary")
@@ -35,8 +36,7 @@ def test_get_models(client, db):
     assert data[0]["model_id"] == "model-a"
 
 def test_get_model_history(client, db):
-    from datetime import datetime
-    now_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     run1 = Run(run_datetime=now_str)
     db.add(run1)
     db.commit()
