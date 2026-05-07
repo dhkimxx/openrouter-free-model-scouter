@@ -1,4 +1,6 @@
 let allModels = [];
+let eventsModalOffset = 0;
+let healthEventsOffset = 0;
 
 const fullDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
@@ -44,9 +46,49 @@ function formatChartAxisTime(value, period) {
     return `${monthDayFormatter.format(date)}\n${timeFormatter.format(date)}`;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function eventTitle(event) {
+    const labels = {
+        MODEL_ADDED: 'Model added',
+        MODEL_REMOVED: 'Model removed',
+        MODEL_DEGRADED: 'Degraded',
+        MODEL_RECOVERED: 'Recovered',
+        MODEL_RATE_LIMITED: 'Rate limited',
+        MODEL_FLAPPING: 'Flapping'
+    };
+    return labels[event.event_type] || event.event_type;
+}
+
+function eventMarker(event) {
+    const markers = {
+        MODEL_ADDED: '+',
+        MODEL_REMOVED: '-',
+        MODEL_DEGRADED: '!',
+        MODEL_RECOVERED: 'OK',
+        MODEL_RATE_LIMITED: '429',
+        MODEL_FLAPPING: '~'
+    };
+    return markers[event.event_type] || '*';
+}
+
+function eventBadgeClasses(event) {
+    if (event.severity === 'high') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
+    if (event.severity === 'medium') return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200';
+    return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchSummary();
     fetchModels();
+    fetchImportantEvents();
 
     // Search handler
     document.getElementById('searchInput').addEventListener('input', filterModels);
@@ -56,6 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('modal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('modal')) closeModal();
     });
+    document.getElementById('events-view-all').addEventListener('click', openEventsModal);
+    document.getElementById('events-modal-close').addEventListener('click', closeEventsModal);
+    document.getElementById('events-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('events-modal')) closeEventsModal();
+    });
+    document.getElementById('events-modal-load-more').addEventListener('click', loadMoreImportantEvents);
+    document.getElementById('health-events-load-more').addEventListener('click', loadMoreHealthEvents);
 });
 
 function sortModels(models) {
@@ -142,6 +191,87 @@ async function fetchModels() {
         filterModels();
     } catch (err) {
         console.error('Failed to fetch models:', err);
+    }
+}
+
+async function fetchImportantEvents() {
+    try {
+        const res = await fetch('/api/events?type=important&period=30d&limit=5');
+        const data = await res.json();
+        renderEventList(
+            document.getElementById('important-events-list'),
+            data.items || [],
+            'No free-model list changes recorded in the last 30 days.'
+        );
+    } catch (err) {
+        console.error('Failed to fetch important events:', err);
+    }
+}
+
+function renderEventList(container, events, emptyMessage, append = false) {
+    if (!append) container.innerHTML = '';
+    if (!events.length && !append) {
+        container.innerHTML = `<div class="p-6 text-sm text-gray-500 dark:text-gray-400">${escapeHtml(emptyMessage)}</div>`;
+        return;
+    }
+
+    events.forEach(event => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'w-full text-left px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition';
+        row.addEventListener('click', () => {
+            if (!document.getElementById('events-modal').classList.contains('hidden')) {
+                closeEventsModal();
+            }
+            openHistory(event.model_id);
+        });
+        const transition = event.old_value || event.new_value
+            ? `<div class="text-xs text-gray-400 mt-1">${escapeHtml(event.old_value || 'none')} -> ${escapeHtml(event.new_value || 'none')}</div>`
+            : '';
+        row.innerHTML = `
+            <div class="flex items-start gap-3">
+                <span class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded ${eventBadgeClasses(event)} text-xs font-bold">${escapeHtml(eventMarker(event))}</span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-semibold text-gray-900 dark:text-gray-100">${escapeHtml(eventTitle(event))}</span>
+                        <span class="text-xs uppercase tracking-wide text-gray-400">${escapeHtml(event.severity)}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">${escapeHtml(event.model_id)}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(event.message)}</div>
+                    ${transition}
+                </div>
+                <time class="shrink-0 text-xs text-gray-400">${escapeHtml(formatBrowserDateTime(event.event_datetime))}</time>
+            </div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+async function openEventsModal() {
+    eventsModalOffset = 0;
+    document.getElementById('events-modal').classList.remove('hidden');
+    document.getElementById('events-modal-list').innerHTML = '';
+    await loadMoreImportantEvents();
+}
+
+function closeEventsModal() {
+    document.getElementById('events-modal').classList.add('hidden');
+}
+
+async function loadMoreImportantEvents() {
+    try {
+        const res = await fetch(`/api/events?type=important&period=30d&limit=20&offset=${eventsModalOffset}`);
+        const data = await res.json();
+        renderEventList(
+            document.getElementById('events-modal-list'),
+            data.items || [],
+            'No free-model list changes recorded in the last 30 days.',
+            eventsModalOffset > 0
+        );
+        eventsModalOffset = data.next_offset || eventsModalOffset;
+        document.getElementById('events-modal-load-more').classList.toggle('hidden', !data.has_more);
+    } catch (err) {
+        console.error('Failed to fetch more important events:', err);
     }
 }
 
@@ -232,10 +362,43 @@ window.openHistory = async function(modelId, period = '1d') {
         const history = await res.json();
 
         renderChart(history);
+        resetHealthEvents();
+        await loadMoreHealthEvents();
     } catch (err) {
         console.error(err);
         chartInstance.hideLoading();
         chartContainer.innerText = "Error loading history.";
+    }
+}
+
+function resetHealthEvents() {
+    healthEventsOffset = 0;
+    document.getElementById('health-events-list').innerHTML = '';
+    document.getElementById('health-events-load-more').classList.add('hidden');
+}
+
+async function loadMoreHealthEvents() {
+    if (!window.currentModelId) return;
+    const params = new URLSearchParams({
+        type: 'health',
+        period: '30d',
+        limit: '10',
+        offset: String(healthEventsOffset),
+        model_id: window.currentModelId
+    });
+    try {
+        const res = await fetch(`/api/events?${params.toString()}`);
+        const data = await res.json();
+        renderEventList(
+            document.getElementById('health-events-list'),
+            data.items || [],
+            'No health events recorded for this model in the last 30 days.',
+            healthEventsOffset > 0
+        );
+        healthEventsOffset = data.next_offset || healthEventsOffset;
+        document.getElementById('health-events-load-more').classList.toggle('hidden', !data.has_more);
+    } catch (err) {
+        console.error('Failed to fetch health events:', err);
     }
 }
 
@@ -344,6 +507,7 @@ function renderChart(history) {
 
 function closeModal() {
     document.getElementById('modal').classList.add('hidden');
+    resetHealthEvents();
     if (chartInstance) {
         chartInstance.dispose();
         chartInstance = null;

@@ -6,6 +6,7 @@ from ..model_catalog_service import ModelCatalogService
 from ..openrouter_client import AsyncOpenRouterClient
 from ..config import AppConfig
 from ..domain_models import HealthcheckResult
+from ..services.event_service import EventService
 from ..time_utils import format_utc_datetime, utc_now
 
 
@@ -51,5 +52,7 @@ class ScouterWorker:
             )
             self.db.add(check)
         self.db.commit()
+
+        EventService(self.db).record_events_for_run(run_record.id, config)
 
         return run_record.id, results

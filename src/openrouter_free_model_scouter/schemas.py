@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional
 
 
@@ -43,3 +43,23 @@ class Summary(BaseModel):
     degraded_count: int
     down_count: int
     last_updated: Optional[str]
+
+
+class EventItem(BaseModel):
+    id: int
+    run_id: int
+    previous_run_id: Optional[int]
+    event_datetime: str
+    event_type: str
+    severity: str
+    model_id: str
+    old_value: Optional[str]
+    new_value: Optional[str]
+    message: str
+    metadata: dict = Field(default_factory=dict)
+
+
+class EventList(BaseModel):
+    items: List[EventItem]
+    has_more: bool
+    next_offset: int
