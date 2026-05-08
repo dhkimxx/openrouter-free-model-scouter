@@ -72,22 +72,28 @@ function eventTitle(event) {
     return labels[event.event_type] || event.event_type;
 }
 
-function eventMarker(event) {
-    const markers = {
-        MODEL_ADDED: '+',
-        MODEL_REMOVED: '-',
-        MODEL_DEGRADED: '!',
-        MODEL_RECOVERED: 'OK',
+function eventBadgeLabel(event) {
+    const labels = {
+        MODEL_ADDED: '+ ADDED',
+        MODEL_REMOVED: '- REMOVED',
+        MODEL_DEGRADED: 'DEGRADED',
+        MODEL_RECOVERED: 'RECOVERED',
         MODEL_RATE_LIMITED: '429',
-        MODEL_FLAPPING: '~'
+        MODEL_FLAPPING: 'FLAPPING'
     };
-    return markers[event.event_type] || '*';
+    return labels[event.event_type] || eventTitle(event).toUpperCase();
 }
 
-function eventMarkerClasses(event) {
-    if (event.severity === 'high') return 'text-amber-700 bg-amber-100 dark:text-amber-200 dark:bg-amber-900/40';
-    if (event.severity === 'medium') return 'text-blue-700 bg-blue-100 dark:text-blue-200 dark:bg-blue-900/40';
-    return 'text-gray-600 bg-gray-100 dark:text-gray-200 dark:bg-gray-700';
+function eventBadgeClasses(event) {
+    const classes = {
+        MODEL_ADDED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+        MODEL_REMOVED: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200',
+        MODEL_DEGRADED: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+        MODEL_RECOVERED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+        MODEL_RATE_LIMITED: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200',
+        MODEL_FLAPPING: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+    };
+    return classes[event.event_type] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
 }
 
 function eventCompactDetail(event) {
@@ -242,9 +248,8 @@ function renderEventList(container, events, emptyMessage, append = false) {
         });
         row.innerHTML = `
             <div class="flex min-w-0 items-center gap-2 text-sm">
-                <span class="shrink-0 inline-flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-[11px] font-bold ${eventMarkerClasses(event)}">${escapeHtml(eventMarker(event))}</span>
+                <span class="shrink-0 inline-flex min-w-[5.75rem] items-center justify-center rounded-full px-2 py-1 text-[11px] font-bold tracking-wide ${eventBadgeClasses(event)}">${escapeHtml(eventBadgeLabel(event))}</span>
                 <time class="shrink-0 text-xs text-gray-400">${escapeHtml(formatEventListTime(event.event_datetime))}</time>
-                <span class="shrink-0 font-semibold text-gray-900 dark:text-gray-100">${escapeHtml(eventTitle(event))}</span>
                 <span class="min-w-0 flex-1 truncate text-gray-600 dark:text-gray-300">${escapeHtml(event.model_id)}</span>
                 <span class="hidden shrink-0 text-xs text-gray-400 sm:inline">${escapeHtml(eventCompactDetail(event))}</span>
             </div>
