@@ -74,8 +74,8 @@ function eventTitle(event) {
 
 function eventBadgeLabel(event) {
     const labels = {
-        MODEL_ADDED: '+ ADDED',
-        MODEL_REMOVED: '- REMOVED',
+        MODEL_ADDED: 'ADDED',
+        MODEL_REMOVED: 'REMOVED',
         MODEL_DEGRADED: 'DEGRADED',
         MODEL_RECOVERED: 'RECOVERED',
         MODEL_RATE_LIMITED: '429',
