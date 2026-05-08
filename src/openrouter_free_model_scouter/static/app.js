@@ -292,7 +292,7 @@ function renderModels(models) {
 
     models.forEach(model => {
         const tr = document.createElement('tr');
-        tr.className = "hover:bg-gray-100 dark:hover:bg-gray-700 transition";
+        tr.className = "group hover:bg-gray-100 dark:hover:bg-gray-700 transition";
 
         // Determine status class
         let statusClass = "text-gray-500";
@@ -317,15 +317,16 @@ function renderModels(models) {
         // I will use these.
 
         tr.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
-                ${model.model_id}
-                <button onclick="copyToClipboard('${model.model_id}', this)" class="ml-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition" title="Copy Model ID">📋</button>
+            <td class="sticky left-0 z-10 min-w-[18rem] max-w-[22rem] bg-white dark:bg-gray-800 px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-[8px_0_12px_-12px_rgba(0,0,0,0.55)] group-hover:bg-gray-100 dark:group-hover:bg-gray-700">
+                <div class="flex min-w-0 items-center">
+                    <span class="truncate">${escapeHtml(model.model_id)}</span>
+                    <button onclick="copyToClipboard('${model.model_id}', this)" class="ml-2 shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition" title="Copy Model ID">📋</button>
+                </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">${statusIcon} <span class="text-xs font-normal text-gray-400">(${model.latest_status})</span></td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.uptime_24h.toFixed(1)}%</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.avg_latency_24h ? Math.round(model.avg_latency_24h) + ' ms' : '-'}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${createSparkline(model.sparkline_data)}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${model.consecutive_failures}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                 <button onclick="openHistory('${model.model_id}')" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 font-semibold">History</button>
             </td>
