@@ -69,10 +69,18 @@
         <!-- Models Table -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="min-w-[920px] w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <table class="model-table w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <colgroup>
+                        <col class="model-id-column">
+                        <col class="model-status-column">
+                        <col class="model-uptime-column">
+                        <col class="model-latency-column">
+                        <col class="model-trend-column">
+                        <col class="model-action-column">
+                    </colgroup>
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th class="sticky left-0 z-20 min-w-[18rem] max-w-[22rem] bg-gray-50 dark:bg-gray-700 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider shadow-[8px_0_12px_-12px_rgba(0,0,0,0.55)]">Model ID</th>
+                            <th class="model-id-column sticky left-0 z-20 bg-gray-50 dark:bg-gray-700 px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider shadow-[8px_0_12px_-12px_rgba(0,0,0,0.55)] sm:px-6">Model ID</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Uptime (24h)</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Avg Latency</th>

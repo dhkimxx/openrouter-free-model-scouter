@@ -317,7 +317,7 @@ function renderModels(models) {
         // I will use these.
 
         tr.innerHTML = `
-            <td class="sticky left-0 z-10 min-w-[18rem] max-w-[22rem] bg-white dark:bg-gray-800 px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-[8px_0_12px_-12px_rgba(0,0,0,0.55)] group-hover:bg-gray-100 dark:group-hover:bg-gray-700">
+            <td class="model-id-column sticky left-0 z-10 bg-white dark:bg-gray-800 px-3 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-[8px_0_12px_-12px_rgba(0,0,0,0.55)] group-hover:bg-gray-100 dark:group-hover:bg-gray-700 sm:px-6">
                 <div class="flex min-w-0 items-center">
                     <span class="truncate">${escapeHtml(model.model_id)}</span>
                     <button onclick="copyToClipboard('${model.model_id}', this)" class="ml-2 shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition" title="Copy Model ID">📋</button>

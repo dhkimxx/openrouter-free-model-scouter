@@ -2,3 +2,44 @@
 body {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
+
+:root {
+    --model-id-column-width: clamp(9.5rem, 42vw, 14rem);
+}
+
+@media (min-width: 768px) {
+    :root {
+        --model-id-column-width: clamp(12rem, 26vw, 16rem);
+    }
+}
+
+.model-id-column {
+    width: var(--model-id-column-width);
+    min-width: var(--model-id-column-width);
+    max-width: var(--model-id-column-width);
+}
+
+.model-table {
+    min-width: calc(var(--model-id-column-width) + 43rem);
+    table-layout: fixed;
+}
+
+.model-status-column {
+    width: 10rem;
+}
+
+.model-uptime-column {
+    width: 8rem;
+}
+
+.model-latency-column {
+    width: 8rem;
+}
+
+.model-trend-column {
+    width: 11rem;
+}
+
+.model-action-column {
+    width: 6rem;
+}
