@@ -38,6 +38,11 @@ function formatBrowserDateTime(value) {
     return date ? fullDateTimeFormatter.format(date) : String(value || '-');
 }
 
+function formatEventListTime(value) {
+    const date = parseServerTimestamp(value);
+    return date ? `${monthDayFormatter.format(date)} ${timeFormatter.format(date)}` : String(value || '-');
+}
+
 function formatChartAxisTime(value, period) {
     const date = parseServerTimestamp(value);
     if (!date) return value;
@@ -57,8 +62,8 @@ function escapeHtml(value) {
 
 function eventTitle(event) {
     const labels = {
-        MODEL_ADDED: 'Model added',
-        MODEL_REMOVED: 'Model removed',
+        MODEL_ADDED: 'Added',
+        MODEL_REMOVED: 'Removed',
         MODEL_DEGRADED: 'Degraded',
         MODEL_RECOVERED: 'Recovered',
         MODEL_RATE_LIMITED: 'Rate limited',
@@ -79,10 +84,19 @@ function eventMarker(event) {
     return markers[event.event_type] || '*';
 }
 
-function eventBadgeClasses(event) {
-    if (event.severity === 'high') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
-    if (event.severity === 'medium') return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200';
-    return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
+function eventMarkerClasses(event) {
+    if (event.severity === 'high') return 'text-amber-700 bg-amber-100 dark:text-amber-200 dark:bg-amber-900/40';
+    if (event.severity === 'medium') return 'text-blue-700 bg-blue-100 dark:text-blue-200 dark:bg-blue-900/40';
+    return 'text-gray-600 bg-gray-100 dark:text-gray-200 dark:bg-gray-700';
+}
+
+function eventCompactDetail(event) {
+    if (event.event_type === 'MODEL_ADDED') return 'free model list';
+    if (event.event_type === 'MODEL_REMOVED') return 'free model list';
+    if (event.old_value || event.new_value) {
+        return `${event.old_value || 'none'} -> ${event.new_value || 'none'}`;
+    }
+    return event.message || '';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -218,29 +232,21 @@ function renderEventList(container, events, emptyMessage, append = false) {
     events.forEach(event => {
         const row = document.createElement('button');
         row.type = 'button';
-        row.className = 'w-full text-left px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition';
+        row.className = 'w-full text-left px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition';
+        row.title = `${eventTitle(event)} · ${event.model_id} · ${event.message || ''}`;
         row.addEventListener('click', () => {
             if (!document.getElementById('events-modal').classList.contains('hidden')) {
                 closeEventsModal();
             }
             openHistory(event.model_id);
         });
-        const transition = event.old_value || event.new_value
-            ? `<div class="text-xs text-gray-400 mt-1">${escapeHtml(event.old_value || 'none')} -> ${escapeHtml(event.new_value || 'none')}</div>`
-            : '';
         row.innerHTML = `
-            <div class="flex items-start gap-3">
-                <span class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded ${eventBadgeClasses(event)} text-xs font-bold">${escapeHtml(eventMarker(event))}</span>
-                <div class="min-w-0 flex-1">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-semibold text-gray-900 dark:text-gray-100">${escapeHtml(eventTitle(event))}</span>
-                        <span class="text-xs uppercase tracking-wide text-gray-400">${escapeHtml(event.severity)}</span>
-                    </div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300 truncate">${escapeHtml(event.model_id)}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">${escapeHtml(event.message)}</div>
-                    ${transition}
-                </div>
-                <time class="shrink-0 text-xs text-gray-400">${escapeHtml(formatBrowserDateTime(event.event_datetime))}</time>
+            <div class="flex min-w-0 items-center gap-2 text-sm">
+                <span class="shrink-0 inline-flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-[11px] font-bold ${eventMarkerClasses(event)}">${escapeHtml(eventMarker(event))}</span>
+                <time class="shrink-0 text-xs text-gray-400">${escapeHtml(formatEventListTime(event.event_datetime))}</time>
+                <span class="shrink-0 font-semibold text-gray-900 dark:text-gray-100">${escapeHtml(eventTitle(event))}</span>
+                <span class="min-w-0 flex-1 truncate text-gray-600 dark:text-gray-300">${escapeHtml(event.model_id)}</span>
+                <span class="hidden shrink-0 text-xs text-gray-400 sm:inline">${escapeHtml(eventCompactDetail(event))}</span>
             </div>
         `;
         container.appendChild(row);
