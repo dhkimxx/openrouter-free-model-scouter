@@ -43,3 +43,47 @@ body {
 .model-action-column {
     width: 6rem;
 }
+
+.summary-metric {
+    border-left-width: 3px;
+    border-radius: 0.625rem;
+    background: rgba(243, 244, 246, 0.72);
+    padding: 0.5rem 0.625rem;
+}
+
+.dark .summary-metric {
+    background: rgba(31, 41, 55, 0.72);
+}
+
+.summary-metric-label {
+    display: block;
+    color: rgb(107, 114, 128);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.summary-metric-value {
+    display: block;
+    font-size: clamp(1.1rem, 4.5vw, 1.75rem);
+    line-height: 1.1;
+    margin-top: 0.25rem;
+}
+
+.summary-bar-segment {
+    transition: width 240ms ease;
+}
+
+.summary-bar-segment[data-has-value="true"] {
+    min-width: 0.4rem;
+}
+
+@media (min-width: 640px) {
+    .summary-metric {
+        border-left-width: 0;
+        border-top-width: 3px;
+        padding: 0.875rem 1rem;
+    }
+}

@@ -14,7 +14,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260509-status-overview">
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
 
@@ -24,25 +24,39 @@
             <div id="last-updated" class="text-sm text-gray-500"></div>
         </header>
 
-        <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-                <h3 class="text-sm font-semibold text-gray-500 uppercase">Total Models</h3>
-                <p id="summary-total" class="text-3xl font-bold mt-2">-</p>
+        <!-- Status Overview -->
+        <section class="status-overview mb-6 rounded-lg bg-white p-3 shadow dark:bg-gray-800 sm:p-5 lg:mb-8 lg:p-6">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status Overview</p>
+                    <h2 class="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100 sm:text-2xl lg:text-3xl">
+                        <span id="summary-total">-</span> models monitored
+                    </h2>
+                </div>
+                <div class="grid grid-cols-3 gap-2 sm:gap-3 md:min-w-[22rem] lg:min-w-[24rem]">
+                    <div class="summary-metric border-green-500/70">
+                        <span class="summary-metric-label">Healthy</span>
+                        <strong id="summary-healthy" class="summary-metric-value text-green-500">-</strong>
+                    </div>
+                    <div class="summary-metric border-yellow-500/70">
+                        <span class="summary-metric-label">Degraded</span>
+                        <strong id="summary-degraded" class="summary-metric-value text-yellow-500">-</strong>
+                    </div>
+                    <div class="summary-metric border-red-500/70">
+                        <span class="summary-metric-label">Down</span>
+                        <strong id="summary-down" class="summary-metric-value text-red-500">-</strong>
+                    </div>
+                </div>
             </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-green-500">
-                <h3 class="text-sm font-semibold text-gray-500 uppercase">Healthy</h3>
-                <p id="summary-healthy" class="text-3xl font-bold mt-2 text-green-500">-</p>
+            <div class="mt-4">
+                <div class="flex h-3 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" aria-label="Model status distribution">
+                    <div id="summary-healthy-bar" class="summary-bar-segment bg-green-500" style="width: 0%"></div>
+                    <div id="summary-degraded-bar" class="summary-bar-segment bg-yellow-500" style="width: 0%"></div>
+                    <div id="summary-down-bar" class="summary-bar-segment bg-red-500" style="width: 0%"></div>
+                </div>
+                <p id="summary-ratio-label" class="mt-2 text-xs text-gray-500 dark:text-gray-400">Waiting for scan data.</p>
             </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-yellow-500">
-                <h3 class="text-sm font-semibold text-gray-500 uppercase">Degraded</h3>
-                <p id="summary-degraded" class="text-3xl font-bold mt-2 text-yellow-500">-</p>
-            </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-red-500">
-                <h3 class="text-sm font-semibold text-gray-500 uppercase">Down</h3>
-                <p id="summary-down" class="text-3xl font-bold mt-2 text-red-500">-</p>
-            </div>
-        </div>
+        </section>
 
         <!-- Important Events -->
         <section class="bg-white dark:bg-gray-800 rounded-lg shadow mb-8 overflow-hidden">
@@ -143,6 +157,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260509-status-overview"></script>
 </body>
 </html>

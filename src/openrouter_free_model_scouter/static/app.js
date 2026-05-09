@@ -60,6 +60,11 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function formatPercent(value) {
+    if (!Number.isFinite(value)) return '0.0%';
+    return `${value.toFixed(1)}%`;
+}
+
 function eventTitle(event) {
     const labels = {
         MODEL_ADDED: 'Added',
@@ -187,11 +192,8 @@ async function fetchSummary() {
     try {
         const res = await fetch('/api/summary');
         const data = await res.json();
+        renderSummary(data);
 
-        document.getElementById('summary-total').textContent = data.total_models;
-        document.getElementById('summary-healthy').textContent = data.healthy_count;
-        document.getElementById('summary-degraded').textContent = data.degraded_count;
-        document.getElementById('summary-down').textContent = data.down_count;
         if (data.last_updated) {
             document.getElementById('last-updated').textContent = `Last updated: ${formatBrowserDateTime(data.last_updated)}`;
         } else {
@@ -200,6 +202,37 @@ async function fetchSummary() {
     } catch (err) {
         console.error('Failed to fetch summary:', err);
     }
+}
+
+function renderSummary(data) {
+    const total = Number(data.total_models || 0);
+    const healthy = Number(data.healthy_count || 0);
+    const degraded = Number(data.degraded_count || 0);
+    const down = Number(data.down_count || 0);
+
+    const healthyPercent = total > 0 ? (healthy / total) * 100 : 0;
+    const degradedPercent = total > 0 ? (degraded / total) * 100 : 0;
+    const downPercent = total > 0 ? (down / total) * 100 : 0;
+
+    document.getElementById('summary-total').textContent = total;
+    document.getElementById('summary-healthy').textContent = healthy;
+    document.getElementById('summary-degraded').textContent = degraded;
+    document.getElementById('summary-down').textContent = down;
+
+    setSummaryBarWidth('summary-healthy-bar', healthyPercent);
+    setSummaryBarWidth('summary-degraded-bar', degradedPercent);
+    setSummaryBarWidth('summary-down-bar', downPercent);
+
+    const ratioLabel = total > 0
+        ? `Healthy ${formatPercent(healthyPercent)} · Degraded ${formatPercent(degradedPercent)} · Down ${formatPercent(downPercent)}`
+        : 'No model status data yet.';
+    document.getElementById('summary-ratio-label').textContent = ratioLabel;
+}
+
+function setSummaryBarWidth(elementId, percent) {
+    const element = document.getElementById(elementId);
+    element.style.width = `${Math.max(0, percent)}%`;
+    element.dataset.hasValue = percent > 0 ? 'true' : 'false';
 }
 
 async function fetchModels() {
